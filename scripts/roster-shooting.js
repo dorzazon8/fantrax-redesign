@@ -36,16 +36,19 @@
     const headCells = [...header.children].filter((c) => !c.classList.contains('i-table__cell--sticky-left') && !c.classList.contains('i-table__cell--sticky-right'));
     const rows = [...document.querySelectorAll('league-team-roster-tables .i-table__body .i-table__row')];
 
+    const rowCells = rows.map((row) => [...row.children].filter((c) => c.tagName === 'TABLE-CELL'));
+    const merged = new Set();
+
     for (const [made, att] of PAIRS) {
       const i = headCells.findIndex((c) => c.textContent.trim() === made);
       const j = headCells.findIndex((c) => c.textContent.trim() === att);
       if (i < 0 || j !== i + 1) continue;
+      merged.add(i).add(j);
 
       setAttr(headCells[i], 'data-fx-title', `${made}/${att}`);
       setAttr(headCells[j], 'data-fx-hide', '');
 
-      for (const row of rows) {
-        const cells = [...row.children].filter((c) => c.tagName === 'TABLE-CELL');
+      for (const cells of rowCells) {
         // table-cells start at the "Opp" column, which is also the first header cell
         const m = cells[i];
         const a = cells[j];
@@ -56,6 +59,14 @@
         setAttr(a, 'data-fx-hide', '');
       }
     }
+
+    // Tabs without a pair reuse the same cells: clear what an earlier tab left on them
+    const stale = (el, i) => {
+      if (merged.has(i)) return;
+      for (const a of ['data-fx-title', 'data-fx-hide', 'data-fx-pair', 'data-fx-empty']) setAttr(el, a, null);
+    };
+    headCells.forEach(stale);
+    rowCells.forEach((cells) => cells.forEach(stale));
   };
 
   let queued = false;

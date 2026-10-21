@@ -537,6 +537,10 @@ app-league-livescoring ultimate-table td,
   font-size: 1.9rem;
   font-weight: 600;
 }
+/* Summary tab category totals: 2px larger than the table values */
+.league-livescoring-summary__row > section {
+  font-size: calc(1.9rem + 2px);
+}
 .league-livescoring-summary__row > div {
   font-family: "Barlow", sans-serif;
   font-size: 1.25rem;
