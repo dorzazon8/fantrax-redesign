@@ -18,12 +18,10 @@ jobs:
         with:
           node-version: 22
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-
-      - uses: android-actions/setup-android@v3
 
       - name: Build userscript
         run: FX_VERSION="${GITHUB_REF_NAME#v}" node build.mjs
