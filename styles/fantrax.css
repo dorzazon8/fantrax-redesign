@@ -1248,7 +1248,7 @@ app-league-players .scorer__info__positions {
 }
 app-league-players .i-table__body .i-table__cell {
   font-family: var(--fx-num-font);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 app-league-players .i-table__body .cell--zero {
@@ -2014,4 +2014,14 @@ body.theme--dark .fx-inj[data-status="D"] {
 body.theme--dark .fx-inj[data-status="Q"] {
   color: #93c5fd;
   background: rgba(59, 130, 246, 0.22);
+}
+
+/* Player card add button: green = free agent, yellow = on waivers (see scripts/profile-add-button.js); last so it beats the dark rules */
+body player-profile-content .button-group--player-profile player-tx[data-fx-st="FA"] button {
+  background: #1f9d57 !important;
+  color: #fff !important;
+}
+body player-profile-content .button-group--player-profile player-tx[data-fx-st="W"] button {
+  background: #f2b705 !important;
+  color: #1a1a1a !important;
 }

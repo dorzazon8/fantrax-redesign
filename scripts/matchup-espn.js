@@ -10,11 +10,35 @@
 
   const ROOT = 'app-league-livescoring';
   const MODES = ['home', 'summary', 'away'];
-  const FRAME_COOLDOWN_MS = 2000;
+  const FRAME_COOLDOWN_MS = 1200;
+  const RECHECK_MS = 500;
+  const SETTLE_MS = 1000;
+  const QUIET_MS = 1000;
+  const DEFAULT_WINDOW_MS = 8000;
   let teamMode = 'home';
-  let pendingDefault = true;
+  let defaultUntil = Date.now() + DEFAULT_WINDOW_MS;
   let lastRoot = null;
   let lastFrameClick = 0;
+  let lastDefaultClick = 0;
+  let settleUntil = 0; // a tab click takes a moment to show in the DOM; until then the tab state must not drive other clicks
+
+  const settle = () => {
+    settleUntil = Date.now() + SETTLE_MS;
+  };
+  const defaulting = () => Date.now() < defaultUntil;
+
+  // Fantrax resets its tab when a response lands after a tab click, so the default Summary click waits until
+  // its API responses (/fxpa/req) have stopped arriving for a moment. Fantrax keeps its own fetch reference,
+  // so completed requests are read from the resource timing entries instead of patching fetch.
+  let lastNetActivity = Date.now();
+  try {
+    new PerformanceObserver((list) => {
+      if (list.getEntries().some((e) => /fxpa\/req/.test(e.name))) lastNetActivity = Date.now();
+    }).observe({ type: 'resource' });
+  } catch {
+    // no resource timing: the click only waits for the page's own settle delay
+  }
+  const netQuiet = () => Date.now() - lastNetActivity > QUIET_MS;
 
   const root = () => document.querySelector(ROOT);
   const tab = (name) => [...document.querySelectorAll(`${ROOT} .tabs__item`)].find((b) => b.textContent.trim() === name);
@@ -39,24 +63,40 @@
     }
   };
 
-  // Entering the matchups page (or tapping its bottom-nav button) lands on Summary
+  // Entering the matchups page (or tapping its bottom-nav button) lands on Summary. Fantrax resets its own tab
+  // while it finishes loading, so Summary is re-applied for a few seconds unless the user picks a tab first.
   const applyDefault = () => {
     const el = root();
     if (el !== lastRoot) {
       lastRoot = el;
-      if (el) pendingDefault = true;
+      if (el) startDefaultWindow();
     }
-    if (!pendingDefault || !el) return;
     const summaryTab = tab('Summary');
-    if (!summaryTab) return;
-    pendingDefault = false;
-    if (!isSummary()) summaryTab.click();
+    if (!el || !summaryTab || !defaulting() || !netQuiet()) return;
+    if (Date.now() - lastDefaultClick < FRAME_COOLDOWN_MS) return;
+    if (isSummary()) {
+      // Fantrax can show the Summary tab as selected while still rendering the matchup tables; toggling through Matchup repairs it
+      if (document.querySelector(`${ROOT} .league-livescoring-summary__row`) || !document.querySelector(`${ROOT} .scoring-header`)) return;
+      lastDefaultClick = Date.now();
+      tab('Matchup')?.click();
+      settle();
+      return;
+    }
+    lastDefaultClick = Date.now();
+    summaryTab.click();
+    settle();
+  };
+
+  // The page's first request is in flight before any response is seen, so entering the page counts as network activity
+  const startDefaultWindow = () => {
+    defaultUntil = Date.now() + DEFAULT_WINDOW_MS;
+    lastNetActivity = Date.now();
   };
 
   document.addEventListener(
     'click',
     (e) => {
-      if (e.target.closest?.('.nav-mobile-menu__button')?.textContent.includes('Matchups')) pendingDefault = true;
+      if (e.target.closest?.('.nav-mobile-menu__button')?.textContent.includes('Matchups')) startDefaultWindow();
     },
     true,
   );
@@ -67,12 +107,14 @@
   };
 
   const select = (mode) => {
+    defaultUntil = 0;
     if (mode === 'summary') {
       if (!isSummary()) tab('Summary')?.click();
     } else {
       teamMode = mode;
       if (isSummary()) tab('Matchup')?.click();
     }
+    settle();
     sync();
   };
 
@@ -126,8 +168,10 @@
     if (!el) return;
     applyDefault();
     ensureToggle();
-    ensureFrame();
     syncDateLabel();
+    // Until the default Summary has stuck, the tab state is not the user's choice: no frame / layout clicks
+    if (Date.now() < settleUntil || (defaulting() && !isSummary())) return;
+    ensureFrame();
 
     const summary = isSummary();
     const hasTeams = !!teamNames();
@@ -154,5 +198,7 @@
     subtree: true,
     characterData: true,
   });
+  // Fantrax can settle on its own Day view after our click without any further DOM change, so re-check regularly
+  setInterval(schedule, RECHECK_MS);
   sync();
 })();
