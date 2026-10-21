@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+}
+
+// CI passes -PfxVersionName=<git tag without "v">; versionCode is derived so it always increases.
+def fxVersionName = (project.findProperty('fxVersionName') ?: '1.0.0') as String
+def fxParts = fxVersionName.tokenize('.')*.toInteger()
+def fxVersionCode = fxParts[0] * 10000 + fxParts[1] * 100 + fxParts[2]
+
+// Release signing comes from the environment so the keystore never lives in the repo.
+def fxKeystore = System.getenv('FX_KEYSTORE_FILE')
+
+android {
+    namespace 'app.fantrax.redesign'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.fantrax.redesign'
+        minSdk 26
+        targetSdk 34
+        versionCode fxVersionCode
+        versionName fxVersionName
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    if (fxKeystore) {
+        signingConfigs {
+            release {
+                storeFile file(fxKeystore)
+                storePassword System.getenv('FX_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('FX_KEY_ALIAS')
+                keyPassword System.getenv('FX_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (fxKeystore) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.assets.srcDir layout.buildDirectory.dir('generated/userscript')
+    }
+}
+
+// Bundles the same userscript produced by `node build.mjs` so web and app stay in sync.
+tasks.register('copyUserscript', Copy) {
+    from rootProject.file('../dist/fantrax-redesign.user.js')
+    into layout.buildDirectory.dir('generated/userscript')
+    rename { 'fantrax.user.js' }
+}
+preBuild.dependsOn 'copyUserscript'
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

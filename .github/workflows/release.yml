@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build userscript
+        run: FX_VERSION="${GITHUB_REF_NAME#v}" node build.mjs
+
+      - name: Prepare signing key
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          echo "FX_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed APK
+        working-directory: android
+        run: ./gradlew assembleRelease -PfxVersionName="${GITHUB_REF_NAME#v}"
+        env:
+          FX_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          FX_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          FX_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Publish release
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk fantrax-redesign.apk
+          cp dist/fantrax-redesign.user.js fantrax-redesign.user.js
+          gh release create "$GITHUB_REF_NAME" fantrax-redesign.apk fantrax-redesign.user.js \
+            --title "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

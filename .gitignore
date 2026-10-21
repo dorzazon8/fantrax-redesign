@@ -1,0 +1,12 @@
+.profile/
+snapshots/
+node_modules/
+dist/
+launch.log
+.DS_Store
+android/build/
+android/.gradle/
+android/local.properties
+android/app/build/
+*.jks
+*.keystore
