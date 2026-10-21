@@ -1,15 +1,20 @@
 // ESPN-style matchup screen: one [Team A | Summary | Team B] segmented toggle replaces the
 // Matchup/Summary tabs + layout icons, and the period/date picker becomes a "< Tue, Oct 20 >" row.
-// A Day | Week switch replaces Fantrax's Timeframes icons: Week = "Period" (whole roster, week totals),
-// Day = daily view (arrows step one day). Fantrax's own controls stay in the DOM (hidden by CSS) and are driven by clicks.
+// There is no Day/Week switch: the team tabs use Fantrax's Day view (arrows step one day, so each day's
+// lineup shows who plays), the Summary tab uses its Period view (week totals). The header score always
+// shows the week (see matchup-week-score.js). Fantrax's own controls stay in the DOM (hidden by CSS)
+// and are driven by clicks. The Summary tab is selected whenever the matchups page is entered.
 (() => {
   if (window.__fxEspn) return;
   window.__fxEspn = true;
 
   const ROOT = 'app-league-livescoring';
   const MODES = ['home', 'summary', 'away'];
+  const FRAME_COOLDOWN_MS = 2000;
   let teamMode = 'home';
-  let defaulted = false;
+  let pendingDefault = true;
+  let lastRoot = null;
+  let lastFrameClick = 0;
 
   const root = () => document.querySelector(ROOT);
   const tab = (name) => [...document.querySelectorAll(`${ROOT} .tabs__item`)].find((b) => b.textContent.trim() === name);
@@ -20,37 +25,41 @@
   const frames = () => [...document.querySelectorAll(`${ROOT} .livescoring-mobile-filters pill-group[aria-label="Timeframes"] button`)];
   const frameIsDay = () => frames()[0]?.classList.contains('mat-sport') ?? false;
 
-  const ensureRange = () => {
+  // Summary needs the Period view (week totals); team tabs need the Day view (that day's lineup)
+  const ensureFrame = () => {
     const filters = document.querySelector(`${ROOT} .livescoring-mobile-filters`);
     const pills = frames();
-    let box = filters?.querySelector(':scope > .fx-range');
-    if (!filters || pills.length < 2) {
-      box?.remove();
-      return;
-    }
-    if (!box) {
-      box = document.createElement('div');
-      box.className = 'fx-range';
-      for (const [i, label] of [[0, 'Day'], [1, 'Week']]) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = label;
-        btn.dataset.frame = String(i);
-        btn.addEventListener('click', () => frames()[i]?.click());
-        box.append(btn);
-      }
-      filters.append(box);
-    }
+    if (!filters || pills.length < 2) return;
+    const wantDay = !isSummary();
     const day = frameIsDay();
     filters.classList.toggle('fx-week', !day);
-    for (const btn of box.children) btn.setAttribute('aria-pressed', String((btn.dataset.frame === '0') === day));
-
-    // Land on the whole-roster Week view once; afterwards the user's choice sticks
-    if (!defaulted) {
-      defaulted = true;
-      if (day) frames()[1]?.click();
+    if (day !== wantDay && Date.now() - lastFrameClick > FRAME_COOLDOWN_MS) {
+      lastFrameClick = Date.now();
+      pills[wantDay ? 0 : 1].click();
     }
   };
+
+  // Entering the matchups page (or tapping its bottom-nav button) lands on Summary
+  const applyDefault = () => {
+    const el = root();
+    if (el !== lastRoot) {
+      lastRoot = el;
+      if (el) pendingDefault = true;
+    }
+    if (!pendingDefault || !el) return;
+    const summaryTab = tab('Summary');
+    if (!summaryTab) return;
+    pendingDefault = false;
+    if (!isSummary()) summaryTab.click();
+  };
+
+  document.addEventListener(
+    'click',
+    (e) => {
+      if (e.target.closest?.('.nav-mobile-menu__button')?.textContent.includes('Matchups')) pendingDefault = true;
+    },
+    true,
+  );
 
   const teamNames = () => {
     const names = [...document.querySelectorAll(`${ROOT} .scoring-header__name`)].map((n) => n.textContent.trim());
@@ -115,8 +124,9 @@
   const sync = () => {
     const el = root();
     if (!el) return;
+    applyDefault();
     ensureToggle();
-    ensureRange();
+    ensureFrame();
     syncDateLabel();
 
     const summary = isSummary();

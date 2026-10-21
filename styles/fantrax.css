@@ -335,35 +335,11 @@ app-league-livescoring tab-group {
   border-color: rgba(255, 255, 255, 0.12);
 }
 
-/* Timeframes icons are replaced by the Day | Week switch (see scripts/matchup-espn.js) */
+/* Timeframes icons are hidden: the script picks Day (team tabs) or Period (Summary) itself (see scripts/matchup-espn.js) */
 .livescoring-mobile-filters pill-group[aria-label="Timeframes"] {
   display: none !important;
 }
-.livescoring-mobile-filters > .fx-range {
-  grid-area: tf;
-  display: flex;
-  padding: 2px;
-  border-radius: 999px;
-  background: #e1e1e5;
-}
-.fx-range button {
-  height: 28px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(0, 0, 0, 0.6);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-.fx-range button[aria-pressed="true"] {
-  background: #fff;
-  color: #000;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-/* Week view shows a fixed period: no day stepping */
+/* Period view shows a fixed period: no day stepping */
 .livescoring-mobile-filters.fx-week .mat-mdc-form-field-icon-suffix > button {
   visibility: hidden;
 }
@@ -537,9 +513,9 @@ app-league-livescoring ultimate-table td,
   font-size: 1.9rem;
   font-weight: 600;
 }
-/* Summary tab category totals: 2px larger than the table values */
+/* Summary tab category totals: slightly larger than the table values */
 .league-livescoring-summary__row > section {
-  font-size: calc(1.9rem + 2px);
+  font-size: calc(1.7rem);
 }
 .league-livescoring-summary__row > div {
   font-family: "Barlow", sans-serif;
@@ -560,6 +536,101 @@ app-league-livescoring ultimate-table td a {
   color: var(--fx-muted) !important;
   font-family: "Barlow", sans-serif;
   font-weight: 600;
+}
+/* Team tabs: the player block sticks to the left and one row holds player + stats (Opp is a normal column).
+   Fantrax overlays the player block on top of a padded stats row; here it is a sticky column instead. */
+app-league-livescoring ultimate-table {
+  --fx-player-w: 150px;
+  --fx-row-h: 64px;
+}
+app-league-livescoring ultimate-table > section > aside._ut__aside {
+  position: sticky !important;
+  top: auto !important;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 var(--fx-player-w);
+  width: var(--fx-player-w);
+  gap: 0 !important;
+  background: inherit !important;
+  box-shadow: 6px 0 8px -6px rgba(0, 0, 0, 0.22);
+}
+app-league-livescoring ultimate-table > section > aside._ut__aside > td {
+  box-sizing: border-box;
+  width: var(--fx-player-w);
+  height: var(--fx-row-h) !important;
+  margin: 0 !important;
+  padding: 0 6px 0 8px !important;
+  align-items: center;
+  border-bottom: 1px solid var(--fx-line) !important;
+  background: transparent !important;
+}
+/* Fantrax tints rows of players with a game; its compact-table rule hides that tint on the player block */
+app-league-livescoring ultimate-table > section > aside._ut__aside > td.scoring-table-detailed__cell--playing {
+  background: var(--color-primary--50) !important;
+}
+app-league-livescoring ultimate-table > section > ._ut__content td {
+  box-sizing: border-box;
+  height: var(--fx-row-h) !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--fx-line) !important;
+}
+app-league-livescoring ultimate-table > section > aside .scorer {
+  min-width: 0;
+  max-width: 100%;
+}
+app-league-livescoring ultimate-table > section > aside .scorer__info {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+app-league-livescoring ultimate-table > section > aside .scorer__info__name,
+app-league-livescoring ultimate-table > section > aside .scorer__info__name a {
+  font-size: 1.2rem;
+}
+/* A bit more air between the stat columns (header and body cells must match so they stay aligned) */
+app-league-livescoring ultimate-table > header th,
+app-league-livescoring ultimate-table > section > ._ut__content td {
+  padding-left: 11px !important;
+  padding-right: 11px !important;
+}
+app-league-livescoring ultimate-table > section > aside .scorer__info__name {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The header row scrolls with a translateX, so the "Player" label is an overlay on the header itself, not a sticky cell */
+app-league-livescoring ultimate-table > header td._ut__head,
+app-league-livescoring ultimate-table > header tr._ut__head > td:first-child {
+  display: table-cell !important;
+  box-sizing: border-box;
+  width: var(--fx-player-w);
+  min-width: var(--fx-player-w) !important;
+  max-width: var(--fx-player-w);
+  visibility: hidden;
+}
+app-league-livescoring ultimate-table > header::before {
+  content: "Player";
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  width: var(--fx-player-w);
+  height: 100%;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  background: var(--fx-head, #f7f8f9);
+  box-shadow: 6px 0 8px -6px rgba(0, 0, 0, 0.22);
+  color: var(--fx-muted);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .livescoring-mobile-filters pill-group[aria-label="Projected"] > label {
   align-self: center !important;
@@ -806,8 +877,9 @@ app-league-team-roster .scorer__info__positions {
   font-weight: 500;
 }
 app-league-team-roster .i-table__body .i-table__cell {
+  color: var(--fx-muted);
   font-family: var(--fx-num-font);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 app-league-team-roster .i-table__body .cell--zero {
@@ -826,6 +898,76 @@ app-league-team-roster .lineup-btn {
   border-color: transparent !important;
   font-family: var(--fx-num-font);
   font-weight: 700;
+}
+
+/* One row per player: a sticky left block (slot, photo, name, team - positions) and the stats scrolling beside it,
+   Opp being the first stats column (same layout as the Players page) */
+app-league-team-roster .single-header {
+  display: none !important;
+}
+app-league-team-roster .i-table__body .i-table__row {
+  align-items: center;
+  height: 60px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+app-league-team-roster .i-table__body .i-table__row > * {
+  align-self: center !important;
+  border-bottom: 0 !important;
+}
+app-league-team-roster .i-table__body .i-table__row > table-cell {
+  height: auto;
+}
+app-league-team-roster .i-table__body .i-table__row > .i-table__cell--sticky-left,
+app-league-team-roster .i-table__header > .i-table__cell--sticky-left {
+  display: flex !important;
+  align-items: center;
+  box-sizing: border-box;
+  z-index: 2;
+  width: 17.4rem !important;
+  min-width: 17.4rem;
+  max-width: 17.4rem !important;
+  margin-left: 0 !important;
+  padding-left: 8px;
+  background: #fff;
+  box-shadow: 6px 0 8px -6px rgba(0, 0, 0, 0.22);
+}
+app-league-team-roster .i-table__header > .i-table__cell--sticky-left {
+  background: #f7f8f9;
+  color: var(--fx-muted);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left scorer {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info {
+  min-width: 0;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info__name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info__name,
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info__name a {
+  display: inline;
+  font-size: 1.25rem;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info__name {
+  display: block;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__image {
+  flex: none;
+  width: 3.6rem;
+  height: 3.6rem;
+}
+app-league-team-roster .i-table__body .i-table__cell--sticky-left .lineup-btn {
+  flex: none;
 }
 
 /* Bench + injured reserve share one card, split from the active players by a narrow gray band */
@@ -955,9 +1097,9 @@ app-league-team-roster [data-fx-title]::after {
 app-league-team-roster [data-fx-pair]::after {
   content: attr(data-fx-pair);
   font-family: var(--fx-num-font);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  color: var(--fx-ink);
+  color: var(--fx-muted);
 }
 app-league-team-roster [data-fx-pair][data-fx-empty]::after {
   color: #b0b0b5;
@@ -1674,4 +1816,202 @@ app-league-players [data-fx-pair][data-fx-empty]::after {
 }
 .nav-mobile-menu__bar > .nav-mobile-menu__league {
   order: 99;
+}
+
+/* ===== Dark mode: Fantrax adds body.theme--dark (follows the system setting) ===== */
+body.theme--dark {
+  --fx-ink: #f2f2f4;
+  --fx-muted: #9a9aa0;
+  --fx-line: #2c2c30;
+  --fx-on-ink: #0b0b0c;
+  --fx-bg: #0b0b0c;
+  --fx-surface: #121214;
+  --fx-chip: #26262a;
+  --fx-head: #17171a;
+  --fx-faint: #6b6b70;
+  --fx-link: #7db2ff;
+  --fx-disabled: rgba(255, 255, 255, 0.3);
+  color-scheme: dark;
+}
+html:has(body.theme--dark),
+html:has(body.theme--dark) body {
+  background: var(--fx-bg, #0b0b0c) !important;
+}
+/* Page + panel backgrounds (were white) */
+body.theme--dark app-league-livescoring,
+body.theme--dark app-league-team-roster,
+body.theme--dark app-league-players,
+body.theme--dark app-league-livescoring .scoring-header,
+body.theme--dark nav-mobile-menu.nav-mobile-menu,
+body.theme--dark .livescoring-mobile-filters > league-livescoring-filters-period > mat-form-field,
+body.theme--dark app-league-team-roster league-team-select mat-select,
+body.theme--dark app-league-team-roster league-team-roster-tables .i-table,
+body.theme--dark app-league-team-roster league-team-roster-tables .i-table__header,
+body.theme--dark app-league-team-roster .i-table__body .i-table__row,
+body.theme--dark app-league-team-roster .i-table__row.row--amber,
+body.theme--dark app-league-team-roster .i-table__row.row--red,
+body.theme--dark app-league-team-roster .fx-layout__pane:not(.fx-layout__pane--tab-group),
+body.theme--dark app-league-players league-players-table .i-table,
+body.theme--dark app-league-players league-players-table .i-table__header,
+body.theme--dark app-league-players .i-table__body .i-table__row,
+body.theme--dark app-league-players .i-table__body .i-table__row > .i-table__cell--sticky-left,
+body.theme--dark app-league-team-roster .i-table__body .i-table__row > .i-table__cell--sticky-left,
+body.theme--dark .mat-mdc-dialog-surface:has(player-profile-content),
+body.theme--dark player-profile-content .player-profile__header,
+body.theme--dark player-profile-content .player-profile__scroller,
+body.theme--dark player-profile-content .fx-layout__pane,
+body.theme--dark player-profile-content .i-table,
+body.theme--dark player-profile-content .i-table__header,
+body.theme--dark player-profile-content .i-table__body .i-table__row {
+  background: var(--fx-surface) !important;
+}
+body.theme--dark app-league-livescoring,
+body.theme--dark app-league-team-roster,
+body.theme--dark app-league-players {
+  background: var(--fx-bg) !important;
+}
+body.theme--dark player-profile-content {
+  --mdc-dialog-container-color: var(--fx-surface);
+}
+body.theme--dark .livescoring-mobile-filters > league-livescoring-filters-period > mat-form-field {
+  background: var(--fx-bg) !important;
+  border-color: var(--fx-line);
+}
+body.theme--dark app-league-players .i-table__body .i-table__row > .i-table__cell--sticky-left,
+body.theme--dark app-league-team-roster .i-table__body .i-table__row > .i-table__cell--sticky-left {
+  box-shadow: 6px 0 8px -6px rgba(0, 0, 0, 0.6);
+}
+/* Table header cells and zebra rows (were #f7f8f9) */
+body.theme--dark app-league-team-roster .i-table__header .i-table__cell,
+body.theme--dark app-league-players .i-table__header .i-table__cell,
+body.theme--dark app-league-players .i-table__header,
+body.theme--dark app-league-players .i-table__header > .i-table__cell--sticky-left,
+body.theme--dark app-league-players .i-table__body .i-table__row:nth-child(even),
+body.theme--dark app-league-players .i-table__body .i-table__row:nth-child(even) > .i-table__cell--sticky-left,
+body.theme--dark player-profile-content .i-table__header .i-table__cell {
+  background: var(--fx-head) !important;
+}
+/* Chips, buttons, pills (were #f1f1f3) */
+body.theme--dark .livescoring-swipe-matchups__item,
+body.theme--dark .livescoring-swipe-matchups__item.current,
+body.theme--dark .livescoring-swipe-matchups .swipeboard__arrow,
+body.theme--dark app-league-livescoring league-livescoring-legend figure,
+body.theme--dark app-league-team-roster .fx-headline__filters button,
+body.theme--dark app-league-team-roster .swipeboard__arrow,
+body.theme--dark app-league-team-roster .tab-icon,
+body.theme--dark app-league-team-roster filter-panel button.mat-mdc-icon-button:not([class*="mat-mdc-form-field"]),
+body.theme--dark app-league-team-roster .lineup-btn,
+body.theme--dark app-league-team-roster .league-team-select__pill,
+body.theme--dark app-league-players .fx-headline__filters button,
+body.theme--dark app-league-players .swipeboard__arrow,
+body.theme--dark app-league-players .tab-icon,
+body.theme--dark app-league-players .lineup-btn,
+body.theme--dark app-league-players filter-panel button.mat-mdc-icon-button,
+body.theme--dark app-league-players filter-panel .pill,
+body.theme--dark app-league-players .circle-pill,
+body.theme--dark app-league-players .i-table__cell--sorted,
+body.theme--dark app-league-players .i-table__header .i-table__cell--sorted,
+body.theme--dark player-profile-content .player-profile__header__list,
+body.theme--dark player-profile-content .player-profile__header__x,
+body.theme--dark player-profile-content .player-profile__header__more,
+body.theme--dark player-profile-content .button-group--player-profile button,
+body.theme--dark player-profile-content .swipeboard__arrow {
+  background: var(--fx-chip) !important;
+}
+body.theme--dark .livescoring-swipe-matchups__item.current {
+  background: var(--fx-surface) !important;
+  box-shadow: none;
+}
+body.theme--dark .livescoring-swipe-matchups .swipeboard__arrow {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+}
+/* Filled "ink" controls flip with the ink colour, so their text must flip too */
+body.theme--dark app-league-players filter-panel .pill--active,
+body.theme--dark app-league-players .circle-pill--active,
+body.theme--dark app-league-players player-tx button {
+  color: var(--fx-on-ink) !important;
+}
+body.theme--dark player-profile-content .button-group--player-profile player-tx button {
+  color: var(--fx-ink) !important;
+}
+body.theme--dark app-league-players filter-panel .pill--active,
+body.theme--dark app-league-players .circle-pill--active {
+  background: var(--fx-ink) !important;
+}
+/* Matchup summary + segmented controls */
+body.theme--dark .league-livescoring-summary__row > div,
+body.theme--dark .league-livescoring-summary__row--disabled > div,
+body.theme--dark .scoring-table-detailed__middle,
+body.theme--dark .scoring-table-detailed__middle__row,
+body.theme--dark .scoring-table-detailed__middle__header {
+  background-color: var(--fx-chip) !important;
+}
+body.theme--dark .league-livescoring-summary__row > section,
+body.theme--dark .league-livescoring-summary__row > section.color--red {
+  color: var(--fx-faint) !important;
+}
+body.theme--dark .league-livescoring-summary__row > section.color--green {
+  color: #fff !important;
+}
+body.theme--dark .league-livescoring-summary__row > section[data-fx-ma]::before,
+body.theme--dark .league-livescoring-summary__row > section[data-fx-ma]::after {
+  color: var(--fx-muted);
+}
+body.theme--dark ultimate-table .fx-col[data-empty] {
+  color: var(--fx-faint);
+}
+body.theme--dark .fx-seg button[aria-selected="true"] {
+  box-shadow: none;
+}
+body.theme--dark .nav-mobile-menu__button {
+  color: var(--fx-muted);
+}
+body.theme--dark .nav-mobile-menu__button.current {
+  color: #fff;
+}
+body.theme--dark .nav-mobile-menu__button.current mat-icon {
+  background: var(--fx-chip);
+}
+body.theme--dark app-league-team-roster .i-table__row:not(.row--amber):not(.row--red) + .i-table__row.row--amber {
+  border-top-color: var(--fx-bg);
+}
+/* Links, disabled arrows, faint zeros */
+body.theme--dark .livescoring-mobile-filters .mat-mdc-select-value[data-fx-label]::after,
+body.theme--dark .livescoring-mobile-filters .mat-mdc-form-field-icon-suffix > button,
+body.theme--dark app-league-team-roster filter-panel .mat-mdc-form-field-icon-suffix > button,
+body.theme--dark app-league-team-roster filter-panel .mat-mdc-select-value-text,
+body.theme--dark app-league-players .pagination button,
+body.theme--dark app-league-players .pagination > b {
+  color: var(--fx-link) !important;
+}
+body.theme--dark .livescoring-mobile-filters .mat-mdc-form-field-icon-suffix > button.mat-mdc-button-disabled,
+body.theme--dark app-league-team-roster filter-panel .mat-mdc-form-field-icon-suffix > button.mat-mdc-button-disabled,
+body.theme--dark app-league-players .pagination button[disabled],
+body.theme--dark app-league-players .pagination button.mat-mdc-button-disabled {
+  color: var(--fx-disabled) !important;
+}
+body.theme--dark app-league-team-roster .i-table__body .cell--zero,
+body.theme--dark app-league-players .i-table__body .cell--zero,
+body.theme--dark player-profile-content .i-table__body .cell--zero,
+body.theme--dark [data-fx-pair][data-fx-empty]::after {
+  color: var(--fx-faint);
+}
+/* Status colours: brighter on dark */
+body.theme--dark app-league-players .i-table__body .color--green {
+  color: #4ade80;
+}
+body.theme--dark app-league-players .i-table__body .color--red {
+  color: #f87171;
+}
+body.theme--dark .fx-inj[data-status="P"] {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.18);
+}
+body.theme--dark .fx-inj[data-status="D"] {
+  color: #fde047;
+  background: rgba(234, 179, 8, 0.2);
+}
+body.theme--dark .fx-inj[data-status="Q"] {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.22);
 }

@@ -1,5 +1,5 @@
-// Matchup tab tidy-up: hides the empty "Totals" rows and the Hide/Show bench button,
-// and keeps the bench expanded.
+// Matchup tab tidy-up: hides the empty "Totals" rows, the always-empty GP row of the Summary tab and the
+// Hide/Show bench button, and keeps the bench expanded.
 (() => {
   if (window.__fxMatchupTidy) return;
   window.__fxMatchupTidy = true;
@@ -9,6 +9,10 @@
   const sync = () => {
     for (const label of document.querySelectorAll('.scoring-table__row .scoring-table__cell__main > b')) {
       if (/^totals$/i.test(label.textContent.trim())) label.closest('.scoring-table__row')?.classList.add(HIDE);
+    }
+
+    for (const row of document.querySelectorAll('.league-livescoring-summary__row')) {
+      if (row.children[1]?.textContent.trim() === 'GP') row.classList.add(HIDE);
     }
 
     for (const btn of document.querySelectorAll('.scoring-table__cell--full button')) {
