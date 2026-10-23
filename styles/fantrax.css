@@ -902,6 +902,22 @@ nav-mobile-menu.nav-mobile-menu {
   box-shadow: none;
   font-family: "Barlow", "Helvetica Neue", Arial, sans-serif;
   pointer-events: none;
+  /* Always pinned and above the page: a high z-index over sticky table cells, and its own compositing layer so
+     mobile Safari keeps it in place while its toolbar collapses on scroll */
+  position: fixed;
+  z-index: 1000;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+/* A soft fade behind the pill so text scrolling past never runs into it */
+nav-mobile-menu.nav-mobile-menu::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 55%);
+  pointer-events: none;
 }
 fx-nav {
   box-shadow: none !important;
@@ -2310,6 +2326,9 @@ body.theme--dark .nav-mobile-menu__button {
 }
 body.theme--dark nav-mobile-menu.nav-mobile-menu {
   background: transparent;
+}
+body.theme--dark nav-mobile-menu.nav-mobile-menu::before {
+  background: linear-gradient(to bottom, rgba(11, 11, 12, 0), var(--fx-bg) 55%);
 }
 body.theme--dark .nav-mobile-menu__bar {
   border-color: var(--fx-line);
