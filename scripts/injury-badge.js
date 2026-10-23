@@ -1,4 +1,4 @@
-// Adds a one-letter injury badge right after the player name:
+// Adds a one-letter injury badge on the bottom edge of the player's photo:
 //   O = out (red), P = probable (green), D = doubtful (yellow), Q = questionable (blue).
 // The base status comes from the injury icon's tooltip, e.g. "Knee - Out Indefinitely - Expected return Nov 6".
 // Fantrax reports Questionable / Doubtful / Probable all as "Game-time decision", so only for those flagged
@@ -121,8 +121,8 @@
     const wanted = new Map();
     for (const icon of document.querySelectorAll(ICONS)) {
       const scorer = icon.closest('scorer');
-      const nameEl = scorer?.querySelector('.scorer__info__name');
-      if (!nameEl) continue;
+      const photo = scorer?.querySelector('figure.scorer__image');
+      if (!photo) continue;
       let text = tooltipText(icon);
       let letter = statusFor(text, icon);
       if (!letter) continue;
@@ -132,31 +132,23 @@
         letter = refined.status ?? 'Q';
         if (refined.news) text += `\n${refined.news}`;
       }
-      wanted.set(nameEl, { letter, text });
+      wanted.set(photo, { letter, text });
     }
 
     for (const badge of document.querySelectorAll('.fx-inj')) {
-      if (!wanted.has(badge.parentElement)) {
-        badge.parentElement.classList.remove('fx-name', 'fx-name--end');
-        badge.remove();
-      }
+      if (!wanted.has(badge.parentElement)) badge.remove();
     }
 
-    for (const [nameEl, { letter, text }] of wanted) {
-      let badge = nameEl.querySelector(':scope > .fx-inj');
+    for (const [photo, { letter, text }] of wanted) {
+      let badge = photo.querySelector(':scope > .fx-inj');
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'fx-inj';
-        nameEl.append(badge);
+        photo.append(badge);
       }
       if (badge.textContent !== letter) badge.textContent = letter;
       if (badge.title !== text) badge.title = text;
       if (badge.dataset.status !== letter) badge.dataset.status = letter;
-
-      // Right-aligned names (away side) keep the badge right after the text, against the avatar.
-      const align = getComputedStyle(nameEl).textAlign;
-      nameEl.classList.add('fx-name');
-      nameEl.classList.toggle('fx-name--end', align === 'right' || align === 'end');
     }
   };
 

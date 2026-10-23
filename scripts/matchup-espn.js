@@ -1,9 +1,13 @@
 // ESPN-style matchup screen: one [Team A | Summary | Team B] segmented toggle replaces the
 // Matchup/Summary tabs + layout icons, and the period/date picker becomes a "< Tue, Oct 20 >" row.
-// There is no Day/Week switch: the team tabs use Fantrax's Day view (arrows step one day, so each day's
-// lineup shows who plays), the Summary tab uses its Period view (week totals). The header score always
-// shows the week (see matchup-week-score.js). Fantrax's own controls stay in the DOM (hidden by CSS)
+// The team tabs use Fantrax's Day view (arrows step one day, so each day's lineup shows who plays) and have a
+// small Day | Week switch that swaps to its Period view: every player's totals for the whole scoring week.
+// In the Week range the active and bench tables are shown as one (CSS, see .fx-merged). The fx-team-*, fx-merged and
+// fx-busy classes of the root follow what Fantrax actually shows, not the last tap (a tap needs a request first).
+// The Summary tab always uses the Period view (week totals). The header score always shows the week
+// (see matchup-week-score.js). Fantrax's own controls stay in the DOM (hidden by CSS)
 // and are driven by clicks. The Summary tab is selected whenever the matchups page is entered.
+// The two team headers are replaced by one compact, sticky score row ([logo 5-2-2 ... 2-5-2 logo]) built from them.
 (() => {
   if (window.__fxEspn) return;
   window.__fxEspn = true;
@@ -16,6 +20,7 @@
   const QUIET_MS = 1000;
   const DEFAULT_WINDOW_MS = 8000;
   let teamMode = 'home';
+  let teamRange = 'day'; // team tabs: 'day' = one day's lineup, 'week' = every player's week totals
   let defaultUntil = Date.now() + DEFAULT_WINDOW_MS;
   let lastRoot = null;
   let lastFrameClick = 0;
@@ -49,18 +54,26 @@
   const frames = () => [...document.querySelectorAll(`${ROOT} .livescoring-mobile-filters pill-group[aria-label="Timeframes"] button`)];
   const frameIsDay = () => frames()[0]?.classList.contains('mat-sport') ?? false;
 
-  // Summary needs the Period view (week totals); team tabs need the Day view (that day's lineup)
+  // Summary and the team tabs' Week range need the Period view (week totals); the Day range needs the Day view
+  const wantsDay = () => !isSummary() && teamRange === 'day';
+
+  // A pill click is followed by a request; the next click waits until the frame has switched (so quick Day / Week
+  // taps are applied one after the other as soon as the page is ready) or FRAME_COOLDOWN_MS has passed
+  let frameClickTarget = null;
+
   const ensureFrame = () => {
     const filters = document.querySelector(`${ROOT} .livescoring-mobile-filters`);
     const pills = frames();
     if (!filters || pills.length < 2) return;
-    const wantDay = !isSummary();
+    const wantDay = wantsDay();
     const day = frameIsDay();
     filters.classList.toggle('fx-week', !day);
-    if (day !== wantDay && Date.now() - lastFrameClick > FRAME_COOLDOWN_MS) {
-      lastFrameClick = Date.now();
-      pills[wantDay ? 0 : 1].click();
-    }
+    if (frameClickTarget !== null && day === frameClickTarget) frameClickTarget = null;
+    if (day === wantDay) return;
+    if (frameClickTarget !== null && Date.now() - lastFrameClick < FRAME_COOLDOWN_MS) return;
+    lastFrameClick = Date.now();
+    frameClickTarget = wantDay;
+    pills[wantDay ? 0 : 1].click();
   };
 
   // Entering the matchups page (or tapping its bottom-nav button) lands on Summary. Fantrax resets its own tab
@@ -149,6 +162,101 @@
     }
   };
 
+  // One sticky row with both teams' logo + week score, mirrored from Fantrax's (hidden) team headers
+  const ensureScoreRow = () => {
+    const host = document.querySelector(`${ROOT} section.content__main__rows`);
+    const headers = [...document.querySelectorAll(`${ROOT} league-livescoring-table-header`)].slice(0, 2);
+    let bar = host?.querySelector(':scope > .fx-score');
+    if (!host || headers.length < 2 || !teamNames()) {
+      bar?.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'fx-score';
+      for (let i = 0; i < 2; i++) {
+        const side = document.createElement('div');
+        side.append(document.createElement('figure'), document.createElement('b'));
+        bar.append(side);
+      }
+      host.append(bar);
+    }
+    headers.forEach((header, i) => {
+      const [logo, score] = bar.children[i].children;
+      const image = header.querySelector('.scoring-header__logo')?.style.backgroundImage ?? '';
+      if (logo.style.backgroundImage !== image) logo.style.backgroundImage = image;
+      const wlt = header.querySelector('.scoring-header__score-primary h2')?.textContent.match(/\d+/g)?.slice(0, 3).join('-') ?? '';
+      if (score.textContent !== wlt) score.textContent = wlt;
+    });
+  };
+
+  // Short row under the score with each team's games of the week: "14 played · 21 left"
+  // (window.__fxWeekGames comes from matchup-week-score.js; Fantrax's own played / live / remaining chip is hidden)
+  const ensureGamesRow = () => {
+    const host = document.querySelector(`${ROOT} section.content__main__rows`);
+    const headers = [...document.querySelectorAll(`${ROOT} league-livescoring-table-header`)].slice(0, 2);
+    let bar = host?.querySelector(':scope > .fx-games');
+    if (!host || headers.length < 2 || !teamNames()) {
+      bar?.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'fx-games';
+      for (let i = 0; i < 2; i++) bar.append(document.createElement('div'));
+      host.append(bar);
+    }
+    headers.forEach((header, i) => {
+      const teamId = header.querySelector('a[href*="teamId="]')?.getAttribute('href').match(/teamId=(\w+)/)?.[1];
+      const info = window.__fxWeekGames?.[teamId];
+      const side = bar.children[i];
+      const text = info ? `${info[0]}|${info[2]}` : '';
+      if (side.dataset.fxText === text) return;
+      side.dataset.fxText = text;
+      side.replaceChildren();
+      if (!info) return;
+      for (const [count, label] of [[info[0], 'played'], [info[2], 'left']]) {
+        const item = document.createElement('span');
+        const num = document.createElement('b');
+        num.textContent = count;
+        item.append(num, ` ${label}`);
+        side.append(item);
+      }
+    });
+  };
+
+  // Day | Week switch of the team tabs, in the filters grid next to the Projected toggle
+  const RANGES = { day: 'Day', week: 'Week' };
+
+  const ensureRange = () => {
+    const filters = document.querySelector(`${ROOT} .livescoring-mobile-filters`);
+    let bar = filters?.querySelector(':scope > .fx-range');
+    filters?.classList.toggle('fx-summary', isSummary());
+    if (!filters || !teamNames() || isSummary()) {
+      bar?.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'fx-range';
+      bar.setAttribute('role', 'tablist');
+      for (const [range, label] of Object.entries(RANGES)) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.range = range;
+        btn.textContent = label;
+        btn.setAttribute('role', 'tab');
+        btn.addEventListener('click', () => {
+          teamRange = range;
+          sync();
+        });
+        bar.append(btn);
+      }
+      filters.append(bar);
+    }
+    for (const btn of bar.children) btn.setAttribute('aria-selected', String(btn.dataset.range === teamRange));
+  };
+
   // "1 (Oct 20 - Oct 25)" -> "Oct 20 - Oct 25", "Tue Oct 20" -> "Tue, Oct 20"
   const formatDate = (text) => {
     const range = text.match(/\(([^)]+)\)/);
@@ -168,15 +276,37 @@
     if (!el) return;
     applyDefault();
     ensureToggle();
+    ensureScoreRow();
+    ensureGamesRow();
+    ensureRange();
     syncDateLabel();
-    // Until the default Summary has stuck, the tab state is not the user's choice: no frame / layout clicks
-    if (Date.now() < settleUntil || (defaulting() && !isSummary())) return;
-    ensureFrame();
+    // Until the default Summary has stuck, the tab state is not the user's choice
+    if (defaulting() && !isSummary()) return;
 
+    // Classes follow what Fantrax really shows, so a Day / Week tap never styles the previous frame's data
     const summary = isSummary();
     const hasTeams = !!teamNames();
-    el.classList.toggle('fx-team-home', hasTeams && !summary && teamMode === 'home');
-    el.classList.toggle('fx-team-away', hasTeams && !summary && teamMode === 'away');
+    const day = frameIsDay();
+    const framed = frames().length >= 2;
+    let changed = false;
+    const flag = (name, on) => {
+      if (el.classList.contains(name) !== on) {
+        el.classList.toggle(name, on);
+        changed = true;
+      }
+    };
+    flag('fx-team-home', hasTeams && !summary && teamMode === 'home');
+    flag('fx-team-away', hasTeams && !summary && teamMode === 'away');
+    // Period view (the Week range): active + bench players share one table of week totals
+    flag('fx-merged', hasTeams && !summary && framed && !day);
+    // The requested frame is still loading: the tables show the other frame's numbers meanwhile (dimmed by CSS)
+    flag('fx-busy', hasTeams && framed && day !== wantsDay());
+    // Class changes are no DOM mutations: tell the other matchup scripts (tidy, shooting splits) to re-sync
+    if (changed) document.dispatchEvent(new Event('fx-matchup-state'));
+
+    // A tab click takes a moment to show in the DOM: no frame / layout clicks until it has
+    if (Date.now() < settleUntil) return;
+    ensureFrame();
 
     // Team views need Fantrax's stacked layout (full-width table per team)
     const icon = stackedIcon();

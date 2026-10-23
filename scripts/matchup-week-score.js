@@ -1,6 +1,8 @@
 // The matchup scores (W - L - T) in the header and the matchup chips always show the whole matchup period.
 // In Fantrax's Day view (used by the team tabs) they only count the selected day, so the period score
 // comes from a second getLiveScoringStats call (viewType 2 = Period) for the same date and replaces it.
+// The same call gives each team's games of the week (played / live / remaining), shared as window.__fxWeekGames
+// ({ [teamId]: [played, live, remaining] }) for the games row under the score (see matchup-espn.js).
 (() => {
   if (window.__fxWeekScore) return;
   window.__fxWeekScore = true;
@@ -40,14 +42,17 @@
     const page = (await res.json()).responses?.[0]?.data;
     const matchups = page?.matchups ?? [];
     const scores = {};
+    const games = {};
     for (const matchup of matchups) {
       const key = page.matchupMap?.[matchup];
       for (const teamId of matchup.split('_')) {
         const wlt = page.statsPerTeam?.allTeamsStats?.[teamId]?.ACTIVE?.wltPerMchup?.[key];
         if (wlt) scores[teamId] = wlt;
+        const info = page.statsPerTeam?.allTeamsStats?.[teamId]?.ACTIVE?.playerGameInfo;
+        if (info) games[teamId] = info.slice(0, 3);
       }
     }
-    return { scores, matchups };
+    return { scores, matchups, games };
   };
 
   const refresh = async (id, date) => {
@@ -56,7 +61,9 @@
     if (pending.has(key) || (hit && Date.now() - hit.at < REFRESH_MS)) return;
     pending.add(key);
     try {
-      cache.set(key, { at: Date.now(), ...(await fetchScores(id, date)) });
+      const result = await fetchScores(id, date);
+      cache.set(key, { at: Date.now(), ...result });
+      window.__fxWeekGames = { ...window.__fxWeekGames, ...result.games };
       schedule();
     } catch {
       cache.set(key, { at: Date.now(), scores: hit?.scores ?? {}, matchups: hit?.matchups ?? [] });
@@ -78,11 +85,11 @@
 
   const sync = () => {
     const id = matchupId();
-    if (!id || !isDayView()) return;
+    if (!id) return;
     const date = dateParam();
     refresh(id, date);
     const hit = cache.get(`${id}|${date}`);
-    if (!hit) return;
+    if (!hit || !isDayView()) return;
 
     for (const header of document.querySelectorAll(HEADERS)) {
       setScore(header.querySelector('.scoring-header__score-primary h2'), hit.scores[teamIdOf(header)]);
