@@ -406,6 +406,7 @@ html:root {
   --fx-muted: #6c6c70;
   --fx-line: #e3e3e6;
   --fx-zebra: #f7f8f9; /* alternate row shade */
+  --fx-navy: #2a4fb8; /* main-action buttons and the chosen tab's line */
 }
 body,
 body button,
@@ -930,7 +931,7 @@ fx-nav {
 }
 .nav-mobile-menu__button.current {
   background: #e3e9f8;
-  color: #1b2f6b;
+  color: #2a4fb8;
 }
 .nav-mobile-menu__button.current b {
   font-weight: 700;
@@ -957,21 +958,48 @@ app-league-team-roster {
   background: #fff;
 }
 app-league-team-roster headline {
-  padding: 0 16px;
+  padding: 0 56px 0 16px; /* room for the options button in the top right corner */
+}
+/* One row, like the matchup page: small title on the left, season + league name right-aligned */
+app-league-team-roster headline .fx-headline__rows {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 1rem;
 }
 app-league-team-roster headline h2 {
+  flex: none;
+  margin: 0;
   color: var(--fx-ink);
   font-family: var(--fx-num-font);
-  font-size: 3.2rem;
+  font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+}
+app-league-team-roster headline h4 {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin: 0;
+  white-space: nowrap;
 }
 app-league-team-roster headline h4,
 app-league-team-roster headline h4 span {
   color: var(--fx-muted) !important;
   font-size: 1.3rem;
   font-weight: 500;
+}
+app-league-team-roster headline h4 span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 app-league-team-roster .fx-headline__filters button {
   background: #f1f1f3;
@@ -983,7 +1011,7 @@ app-league-team-roster section.content__main {
 
 /* Team picker: flat, no Trade button */
 app-league-team-roster league-team-select {
-  margin: 0 12px;
+  margin: 14px 12px 0; /* below the options button in the top right corner */
 }
 app-league-team-roster league-team-select > button {
   display: none !important;
@@ -1012,10 +1040,18 @@ app-league-team-roster .tabs__item {
   font-weight: 600;
   border-bottom: 2px solid transparent;
 }
+/* Shortened tab label (see scripts/roster-tabs.js) */
+app-league-team-roster .tabs__item[data-fx-label] {
+  font-size: 0 !important;
+}
+app-league-team-roster .tabs__item[data-fx-label]::after {
+  content: attr(data-fx-label);
+  font-size: 1.3rem; /* same as the other tabs */
+}
 app-league-team-roster .tabs__item--selected {
   color: var(--fx-ink);
   font-weight: 700;
-  border-bottom-color: var(--fx-ink);
+  border-bottom-color: var(--fx-navy);
 }
 app-league-team-roster .swipeboard__arrow,
 app-league-team-roster .tab-icon {
@@ -1078,6 +1114,11 @@ app-league-team-roster filter-panel mat-form-field {
 app-league-team-roster filter-panel button.mat-mdc-icon-button:not([class*="mat-mdc-form-field"]) {
   color: var(--fx-ink);
   background: #f1f1f3;
+}
+/* The play (set lineup) button next to the date is the page's main action: navy */
+app-league-team-roster filter-panel button.mat-mdc-icon-button.mat-green:not([class*="mat-mdc-form-field"]) {
+  color: #fff;
+  background: #2a4fb8;
 }
 
 /* Roster table: flat, hairlines, condensed numbers */
@@ -1401,21 +1442,48 @@ app-league-players {
   background: #fff;
 }
 app-league-players headline {
-  padding: 0 16px;
+  padding: 0 56px 0 16px; /* room for the options button in the top right corner */
+}
+/* One row, like the matchup page: small title on the left, season + league name right-aligned */
+app-league-players headline .fx-headline__rows {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 1rem;
 }
 app-league-players headline h2 {
+  flex: none;
+  margin: 0;
   color: var(--fx-ink);
   font-family: var(--fx-num-font);
-  font-size: 3.2rem;
+  font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+}
+app-league-players headline h4 {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin: 0;
+  white-space: nowrap;
 }
 app-league-players headline h4,
 app-league-players headline h4 span {
   color: var(--fx-muted) !important;
   font-size: 1.3rem;
   font-weight: 500;
+}
+app-league-players headline h4 span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 app-league-players .fx-headline__filters button {
   background: #f1f1f3;
@@ -1447,7 +1515,7 @@ app-league-players .tabs__item {
 app-league-players .tabs__item--selected {
   color: var(--fx-ink);
   font-weight: 700;
-  border-bottom-color: var(--fx-ink);
+  border-bottom-color: var(--fx-navy);
 }
 app-league-players .swipeboard__arrow,
 app-league-players .tab-icon {
@@ -1634,7 +1702,7 @@ app-league-players filter-panel .pill {
   font-weight: 600;
 }
 app-league-players filter-panel .pill--active {
-  background: var(--fx-ink) !important;
+  background: var(--fx-navy) !important;
   color: #fff !important;
 }
 /* Sorted column: gray instead of orange */
@@ -1669,7 +1737,7 @@ app-league-players .circle-pill {
   box-shadow: none !important;
 }
 app-league-players .circle-pill--active {
-  background: var(--fx-ink) !important;
+  background: var(--fx-navy) !important;
   color: #fff !important;
 }
 app-league-players filter-panel .mdc-notched-outline--focused .mdc-notched-outline__leading,
@@ -1919,7 +1987,7 @@ player-profile-content .tabs__item {
 player-profile-content .tabs__item--selected {
   color: var(--fx-ink);
   font-weight: 700;
-  border-bottom-color: var(--fx-ink);
+  border-bottom-color: var(--fx-navy);
 }
 player-profile-content .swipeboard__arrow {
   background: #f1f1f3 !important;
@@ -2070,16 +2138,17 @@ app-league-players [data-fx-pair][data-fx-empty]::after {
 
 /* ===== Dark mode: Fantrax adds body.theme--dark (follows the system setting) ===== */
 body.theme--dark {
+  --fx-navy: #6f93f0;
   --fx-ink: #f2f2f4;
-  --fx-muted: #9a9aa0;
-  --fx-line: #2c2c30;
+  --fx-muted: #b0b0b8;
+  --fx-line: #3a3a40;
   --fx-on-ink: #0b0b0c;
   --fx-bg: #0b0b0c;
   --fx-surface: #121214;
   --fx-chip: #26262a;
-  --fx-head: #17171a;
-  --fx-zebra: #17171a;
-  --fx-faint: #6b6b70;
+  --fx-head: #202025;
+  --fx-zebra: #1d1d22;
+  --fx-faint: #8a8a92;
   --fx-link: #7db2ff;
   --fx-disabled: rgba(255, 255, 255, 0.3);
   color-scheme: dark;
@@ -2181,7 +2250,9 @@ body.theme--dark .livescoring-swipe-matchups .swipeboard__arrow {
 }
 /* Filled "ink" controls flip with the ink colour, so their text must flip too */
 body.theme--dark app-league-players filter-panel .pill--active,
-body.theme--dark app-league-players .circle-pill--active,
+body.theme--dark app-league-players .circle-pill--active {
+  color: #0b1226 !important;
+}
 body.theme--dark app-league-players player-tx button {
   color: var(--fx-on-ink) !important;
 }
@@ -2190,7 +2261,7 @@ body.theme--dark player-profile-content .button-group--player-profile player-tx 
 }
 body.theme--dark app-league-players filter-panel .pill--active,
 body.theme--dark app-league-players .circle-pill--active {
-  background: var(--fx-ink) !important;
+  background: var(--fx-navy) !important;
 }
 /* Matchup summary + segmented controls */
 body.theme--dark .league-livescoring-summary__row > div,
@@ -2206,6 +2277,12 @@ body.theme--dark .league-livescoring-summary__row > section.color--red {
 }
 body.theme--dark .league-livescoring-summary__row > section.color--green {
   color: #fff !important;
+}
+body.theme--dark .league-livescoring-summary__row {
+  border-bottom-color: #3c3c42 !important;
+}
+body.theme--dark .fx-claims {
+  color: var(--fx-muted);
 }
 body.theme--dark .league-livescoring-summary__row > section[data-fx-ma]::before,
 body.theme--dark .league-livescoring-summary__row > section[data-fx-ma]::after {
@@ -2298,4 +2375,59 @@ body player-profile-content .button-group--player-profile player-tx[data-fx-st="
 body player-profile-content .button-group--player-profile player-tx[data-fx-st="W"] button {
   background: #f2b705 !important;
   color: #1a1a1a !important;
+}
+body.theme--dark app-league-team-roster filter-panel button.mat-mdc-icon-button.mat-green:not([class*="mat-mdc-form-field"]) {
+  color: #fff;
+  background: #2c4aa8 !important;
+}
+
+/* ===== League page: Fantrax's orange accent becomes navy ===== */
+/* (set on the root element, with extra specificity: Fantrax derives its --color-orange-* from these on :root) */
+:root:root:root:has(app-league-home) {
+  --hsl-orange--50: 223 60% 96%;
+  --hsl-orange--100: 223 60% 92%;
+  --hsl-orange--200: 223 58% 84%;
+  --hsl-orange--300: 223 55% 70%;
+  --hsl-orange--400: 223 62% 62%;
+  --hsl-orange--500: 223 62% 50%;
+  --hsl-orange--600: 223 63% 44%;
+  --hsl-orange--700: 223 63% 38%;
+  --hsl-orange--800: 223 63% 32%;
+  --hsl-orange--900: 223 63% 26%;
+}
+/* Dark mode: a lighter navy-blue ramp so it reads on dark surfaces (Fantrax sets its own inline on body, hence !important) */
+body.theme--dark:has(app-league-home) {
+  --hsl-orange--50: 223 40% 14% !important;
+  --hsl-orange--100: 223 45% 18% !important;
+  --hsl-orange--200: 223 50% 26% !important;
+  --hsl-orange--300: 223 55% 40% !important;
+  --hsl-orange--400: 223 70% 60% !important;
+  --hsl-orange--500: 223 80% 68% !important;
+  --hsl-orange--600: 223 85% 72% !important;
+  --hsl-orange--700: 223 85% 78% !important;
+  --hsl-orange--800: 223 85% 84% !important;
+  --hsl-orange--900: 223 85% 90% !important;
+  /* --color-orange-* are resolved on :root, so they are re-derived here */
+  --color-orange: hsl(223 85% 72%);
+  --color-orange--soft: hsl(223 85% 72% / var(--opacity--soft));
+  --color-orange--softer: hsl(223 85% 72% / var(--opacity--softer));
+  --color-orange--softest: hsl(223 85% 72% / var(--opacity--softest));
+  --color-orange--light: hsl(223 80% 68% / var(--opacity-color--light));
+  --color-orange--lighter: hsl(223 70% 60% / var(--opacity-color--lighter));
+  --color-orange--lightest: hsl(223 85% 72% / var(--opacity-color--lightest));
+  /* the sport accent is derived from the orange ramp on a parent, so it is re-derived here too */
+  --color-sport--50: hsl(223 40% 14%);
+  --color-sport--100: hsl(223 45% 18%);
+  --color-sport--200: hsl(223 50% 26%);
+  --color-sport--300: hsl(223 55% 40%);
+  --color-sport--400: hsl(223 70% 60%);
+  --color-sport--500: hsl(223 80% 68%);
+  --color-sport--600: hsl(223 85% 72%);
+  --color-sport--700: hsl(223 85% 78%);
+  --color-sport--800: hsl(223 85% 84%);
+  --color-sport--soft: hsl(223 85% 72% / var(--opacity-sport--soft));
+  --color-sport--softest: hsl(223 85% 72% / var(--opacity-sport--softest));
+  --color-sport--light: hsl(223 80% 68% / var(--opacity-sport--light));
+  --color-sport--lighter: hsl(223 85% 72% / var(--opacity-sport--lighter));
+  --color-sport--lightest: hsl(223 85% 72% / var(--opacity-sport--lightest));
 }
