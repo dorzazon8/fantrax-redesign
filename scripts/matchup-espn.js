@@ -17,12 +17,15 @@
   const FRAME_COOLDOWN_MS = 1200;
   const RECHECK_MS = 500;
   const SETTLE_MS = 1000;
-  const QUIET_MS = 1000;
+  const QUIET_MS = 500;
   const DEFAULT_WINDOW_MS = 8000;
   let teamMode = 'home';
   let teamRange = 'day'; // team tabs: 'day' = one day's lineup, 'week' = every player's week totals
   let defaultUntil = Date.now() + DEFAULT_WINDOW_MS;
   let lastRoot = null;
+  let lastMatchupId = null;
+  let readySince = 0;
+  const READY_STABLE_MS = 300;
   let lastFrameClick = 0;
   let lastDefaultClick = 0;
   let settleUntil = 0; // a tab click takes a moment to show in the DOM; until then the tab state must not drive other clicks
@@ -80,10 +83,12 @@
   // while it finishes loading, so Summary is re-applied for a few seconds unless the user picks a tab first.
   const applyDefault = () => {
     const el = root();
-    if (el !== lastRoot) {
+    const matchupId = new URLSearchParams(location.search).get('matchupId');
+    if (el !== lastRoot || (el && matchupId !== lastMatchupId)) {
       lastRoot = el;
       if (el) startDefaultWindow();
     }
+    lastMatchupId = matchupId;
     const summaryTab = tab('Summary');
     if (!el || !summaryTab || !defaulting() || !netQuiet()) return;
     if (Date.now() - lastDefaultClick < FRAME_COOLDOWN_MS) return;
@@ -104,12 +109,43 @@
   const startDefaultWindow = () => {
     defaultUntil = Date.now() + DEFAULT_WINDOW_MS;
     lastNetActivity = Date.now();
+    readySince = 0;
+    root()?.classList.remove('fx-ready');
+  };
+
+  // The content stays hidden (CSS, until fx-ready) while Fantrax and the other matchup scripts are still filling it in:
+  // Summary selected, the games row and the shooting splits loaded and, with Projected on, the projection applied.
+  // A user's own pick or the end of the default window reveals it regardless.
+  const contentReady = () => {
+    if (!defaulting()) return true;
+    const games = document.querySelector(`${ROOT} .fx-games`);
+    const projectedOn = document.querySelector(`${ROOT} pill-group[aria-label="Projected"] button`)?.getAttribute('aria-checked') === 'true';
+    return (
+      isSummary() &&
+      !!document.querySelector(`${ROOT} .league-livescoring-summary__row`) &&
+      !root().classList.contains('fx-loading') &&
+      !!games &&
+      [...games.children].every((side) => side.childElementCount > 0) &&
+      (!projectedOn || !!document.querySelector(`${ROOT} [data-fx-proj]`))
+    );
+  };
+
+  const syncReady = () => {
+    const el = root();
+    if (!el) return;
+    if (!contentReady()) {
+      readySince = 0;
+      return;
+    }
+    readySince ||= Date.now();
+    if (Date.now() - readySince >= READY_STABLE_MS && !el.classList.contains('fx-ready')) el.classList.add('fx-ready');
   };
 
   document.addEventListener(
     'click',
     (e) => {
       if (e.target.closest?.('.nav-mobile-menu__button')?.textContent.includes('Matchups')) startDefaultWindow();
+      if (e.target.closest?.('.livescoring-swipe-matchups__item')) startDefaultWindow();
     },
     true,
   );
@@ -280,6 +316,7 @@
     ensureGamesRow();
     ensureRange();
     syncDateLabel();
+    syncReady();
     // Until the default Summary has stuck, the tab state is not the user's choice
     if (defaulting() && !isSummary()) return;
 

@@ -286,6 +286,7 @@
       const spec = SPLITS[row.children[1]?.textContent.trim()];
       if (!spec) continue;
       [row.children[0], row.children[2]].forEach((cell, side) => {
+        if (cell?.hasAttribute('data-fx-proj')) return;
         const entry = cache.get(`${ids[side]}|${fr.key}`);
         const sets = entry ? [entry.active, entry.rows] : null;
         const displayed = parseFloat(cell?.textContent);
@@ -300,6 +301,14 @@
   };
 
   const real = (el) => [...el.children].filter((c) => !c.classList.contains(COL));
+
+  // Shooting totals of a team's lineup so far in the matchup period on screen, for matchup-projection.js
+  window.__fxSplits = (teamId) => {
+    const fr = frame();
+    const entry = fr?.days && cache.get(`${teamId}|${fr.key}`);
+    if (!entry?.week) return null;
+    return { FGM: total(entry.active, 'FGM'), FGA: total(entry.active, 'FGA'), FTM: total(entry.active, 'FTM'), FTA: total(entry.active, 'FTA') };
+  };
 
   // Angular re-renders cells and can leave ours misplaced, so every sync keeps only the correctly placed ones
   const ensureCell = (row, idx, spec, tag, ref, keep) => {

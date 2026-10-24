@@ -173,6 +173,104 @@ app-league-livescoring tab-group {
   display: none !important;
 }
 
+/* The matchup content stays hidden until it is complete (fx-ready, see scripts/matchup-espn.js), so it never shows half-loaded numbers */
+app-league-livescoring section.content__main__rows > *:not(headline):not(top-ad) {
+  transition: opacity 0.15s;
+}
+app-league-livescoring:not(.fx-ready) section.content__main__rows > *:not(headline):not(top-ad) {
+  opacity: 0;
+  pointer-events: none;
+}
+app-league-livescoring:not(.fx-ready) section.content__main__rows::after {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 3px solid rgba(128, 128, 128, 0.3);
+  border-top-color: #0b57d0;
+  border-radius: 50%;
+  animation: fx-spin 0.8s linear infinite;
+}
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Summary totals shown at once while the matchup page loads (see scripts/matchup-preview.js) */
+.fx-pre {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 96px;
+  z-index: 20;
+  overflow: hidden;
+  padding: 8px 0;
+  background: var(--fx-surface, #fff);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.fx-pre--on {
+  opacity: 1;
+}
+.fx-pre__teams,
+.fx-pre__row {
+  display: grid;
+  grid-template-columns: 1fr 5.8rem 1fr;
+  align-items: center;
+}
+.fx-pre__teams {
+  grid-template-columns: 1fr 1fr;
+  padding: 6px 12px 10px;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.6rem;
+}
+.fx-pre__teams b:last-child {
+  text-align: right;
+}
+.fx-pre__row {
+  height: 3.6rem;
+  border-top: 1px solid var(--fx-line);
+}
+.fx-pre__row span {
+  padding: 0 1.2rem;
+  color: #8e8e93;
+  font-family: var(--fx-num-font);
+  font-size: 1.7rem;
+  font-weight: 500;
+}
+.fx-pre__row span:first-child {
+  text-align: right;
+}
+.fx-pre__row .fx-pre__lead {
+  color: #000;
+  font-weight: 700;
+}
+.fx-pre__row i {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ebebee;
+  color: var(--fx-muted);
+  font-family: "Barlow", sans-serif;
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+body.theme--dark .fx-pre__row i {
+  background: #3a3a3f;
+}
+body.theme--dark .fx-pre__row .fx-pre__lead {
+  color: #fff;
+}
+
 /* Segmented toggle: [Team A | Summary | Team B] */
 .fx-seg {
   display: flex;
@@ -364,11 +462,6 @@ app-league-livescoring .livescoring-mobile-filters {
   visibility: hidden;
 }
 
-/* The Summary tab has no Projected toggle */
-.livescoring-mobile-filters.fx-summary > .livescoring-mobile-filters__row:first-child {
-  display: none !important;
-}
-
 /* Day | Week switch of the team tabs (see scripts/matchup-espn.js) */
 .fx-range {
   grid-area: tf;
@@ -547,6 +640,8 @@ app-league-livescoring headline h4 span {
 /* The tables' column headers stick right under the score row */
 app-league-livescoring ultimate-table > header {
   top: var(--fx-score-h) !important;
+  /* The header follows the body with a translateX; a scrollable header (swipe, focus) would shift it off its columns */
+  overflow: clip !important;
 }
 /* Fantrax's per-team headers are replaced by the sticky score row below (see scripts/matchup-espn.js) */
 app-league-livescoring league-livescoring-table-header,
@@ -681,7 +776,32 @@ app-league-livescoring ultimate-table {
   --fx-player-w: 168px;
   --fx-row-h: 56px;
   --fx-stat-size: 1.5rem; /* font size of the stat values on the matchup team tabs (same as the Players page) */
-  --fx-stat-pad: 3px; /* left/right padding of every stat column: smaller = tighter categories */
+  --fx-stat-pad: 4px; /* left/right padding of every stat column, the same as the roster and Players tables */
+}
+/* Fixed stat column widths (cells are tagged by scripts/matchup-columns.js), header and body alike so they stay aligned */
+app-league-livescoring ultimate-table [data-fx-w="n"] {
+  box-sizing: border-box;
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+}
+app-league-livescoring ultimate-table [data-fx-w="pct"] {
+  box-sizing: border-box;
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+}
+app-league-livescoring ultimate-table [data-fx-w="ma"] {
+  box-sizing: border-box;
+  width: 62px !important;
+  min-width: 62px !important;
+  max-width: 62px !important;
+}
+app-league-livescoring ultimate-table [data-fx-w="gw"] {
+  box-sizing: border-box;
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
 }
 app-league-livescoring ultimate-table > section > aside._ut__aside {
   position: sticky !important;
@@ -734,6 +854,14 @@ app-league-livescoring ultimate-table > section > ._ut__content td {
 app-league-livescoring ultimate-table > section > ._ut__content td {
   color: var(--fx-muted);
   font-size: var(--fx-stat-size);
+}
+/* Column header labels in bold on the roster, Players and matchup team tables (not the Summary) */
+app-league-team-roster .i-table__header > *,
+app-league-players .i-table__header > *,
+app-league-livescoring ultimate-table > header th,
+app-league-livescoring ultimate-table > header th a,
+app-league-livescoring ultimate-table > header::before {
+  font-weight: 700 !important;
 }
 /* Only the Totals row is black (see scripts/matchup-tidy.js) */
 app-league-livescoring ultimate-table > section > ._ut__content tr[data-fx-total] td {
