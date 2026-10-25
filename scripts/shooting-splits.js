@@ -206,7 +206,8 @@
 
   // Claims used / allowed in the matchup week, shown as text under each team's column of the Summary tab.
   // Used = the team's executed claims on the matchup's days (transaction history; its "Period" column is the day number).
-  // Allowed = used + the team's "Claims Remaining (Week)". Fantrax only reports the remaining claims of the current
+  // Allowed = the league's claim limit (the smallest used + "Claims Remaining (Week)" seen), used = limit - remaining.
+  // Fantrax only reports the remaining claims of the current
   // week, so the text is left out for any other week.
   const CLAIMS_REFRESH_MS = 60000;
   const HISTORY_PAGES = 10;
@@ -230,15 +231,25 @@
       }
       if (oldest < first || page >= (data?.paginatedResultSet?.totalNumPages ?? 1)) break;
     }
-    const byTeam = {};
+    const lefts = {};
     await Promise.all(
       ids.map(async (id) => {
         const roster = await call({ teamId: id });
         const left = roster?.miscData?.transactionInfo?.info?.find((i) => /^claims remaining/i.test(i.name))?.value;
         const today = Number(roster?.displayedSelections?.displayedPeriod);
-        if (Number.isFinite(left) && fr.days.includes(today)) byTeam[id] = [used[id] ?? 0, (used[id] ?? 0) + left];
+        if (Number.isFinite(left) && fr.days.includes(today)) lefts[id] = left;
       }),
     );
+    // Fantrax's claim week runs Monday to Sunday, so a claim made just before the matchup's first day can count in the
+    // period column but not against the limit. The limit is one number for the league: the smallest used + left ever seen.
+    const key = `fxClaimLimit:${leagueId()}`;
+    let limit = Number(localStorage.getItem(key)) || Infinity;
+    for (const [id, left] of Object.entries(lefts)) limit = Math.min(limit, (used[id] ?? 0) + left);
+    const byTeam = {};
+    if (Number.isFinite(limit)) {
+      localStorage.setItem(key, String(limit));
+      for (const [id, left] of Object.entries(lefts)) byTeam[id] = [limit - left, limit];
+    }
     return byTeam;
   };
 

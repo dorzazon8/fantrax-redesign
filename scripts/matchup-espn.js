@@ -226,8 +226,75 @@
     });
   };
 
-  // Short row under the score with each team's games of the week: "14 played · 21 left"
-  // (window.__fxWeekGames comes from matchup-week-score.js; Fantrax's own played / live / remaining chip is hidden)
+  // Season record per team from the standings: matchups W-L-T
+  let standings = null; // { at, byTeam: { [teamId]: "0-0-0" } }
+  let standingsPending = false;
+  const STANDINGS_REFRESH_MS = 60000;
+
+  const loadStandings = async () => {
+    if (standingsPending || (standings && Date.now() - standings.at < STANDINGS_REFRESH_MS)) return;
+    const leagueId = location.pathname.match(/league\/(\w+)/)?.[1];
+    if (!leagueId) return;
+    standingsPending = true;
+    try {
+      const res = await fetch(`/fxpa/req?leagueId=${leagueId}`, {
+        method: 'POST',
+        headers: { 'content-type': 'text/plain' },
+        body: JSON.stringify({ msgs: [{ method: 'getStandings', data: { leagueId } }], uiv: 3, refUrl: location.href }),
+      });
+      const table = (await res.json()).responses?.[0]?.data?.tableList?.[0];
+      const keys = table?.header?.cells.map((c) => c.key) ?? [];
+      const byTeam = {};
+      for (const row of table?.rows ?? []) {
+        const teamId = row.fixedCells?.find((c) => c.teamId)?.teamId;
+        const cell = (key) => row.cells[keys.indexOf(key)]?.content ?? '0';
+        const rank = parseInt(row.fixedCells?.[0]?.content, 10);
+        const place = Number.isFinite(rank) ? ` \u00b7 ${rank}${['th', 'st', 'nd', 'rd'][rank % 100 > 10 && rank % 100 < 14 ? 0 : rank % 10 < 4 ? rank % 10 : 0]}` : '';
+        if (teamId) byTeam[teamId] = `${cell('win')}-${cell('loss')}-${cell('tie')}${place}`;
+      }
+      standings = { at: Date.now(), byTeam };
+    } catch {
+      standings = { at: Date.now(), byTeam: standings?.byTeam ?? {} };
+    } finally {
+      standingsPending = false;
+    }
+  };
+
+  // Team names with their season record under the score, on the Summary tab only
+  const ensureTeamsRow = () => {
+    const host = document.querySelector(`${ROOT} section.content__main__rows`);
+    const headers = [...document.querySelectorAll(`${ROOT} league-livescoring-table-header`)].slice(0, 2);
+    const names = teamNames();
+    let bar = host?.querySelector(':scope > .fx-teams');
+    if (!host || headers.length < 2 || !names || !isSummary()) {
+      bar?.remove();
+      return;
+    }
+    loadStandings();
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'fx-teams';
+      for (let i = 0; i < 2; i++) {
+        const side = document.createElement('div');
+        side.append(document.createElement('b'), document.createElement('span'));
+        bar.append(side);
+      }
+      host.append(bar);
+    }
+    headers.forEach((header, i) => {
+      const teamId = header.querySelector('a[href*="teamId="]')?.getAttribute('href').match(/teamId=(\w+)/)?.[1];
+      const [name, record] = bar.children[i].children;
+      const text = standings?.byTeam[teamId] ?? '';
+      if (name.textContent !== names[i]) name.textContent = names[i];
+      if (record.textContent !== text) record.textContent = text;
+    });
+  };
+
+  // Short row under the score with each team's games of the week: "played 26/30 · left 8/9", effective / raw.
+  // Played: games that scored (Fantrax's own count, active slots only) / all games the roster's players played.
+  // Left: games that fit the lineup if it is set optimally / all games the roster's players have left.
+  // (window.__fxWeekGames comes from matchup-week-score.js, window.__fxGames from matchup-effective-games.js;
+  // Fantrax's own played / live / remaining chip is hidden.) Without the raw numbers only Fantrax's counts are shown.
   const ensureGamesRow = () => {
     const host = document.querySelector(`${ROOT} section.content__main__rows`);
     const headers = [...document.querySelectorAll(`${ROOT} league-livescoring-table-header`)].slice(0, 2);
@@ -245,17 +312,21 @@
     headers.forEach((header, i) => {
       const teamId = header.querySelector('a[href*="teamId="]')?.getAttribute('href').match(/teamId=(\w+)/)?.[1];
       const info = window.__fxWeekGames?.[teamId];
+      const raw = window.__fxGames?.[teamId];
+      const settled = window.__fxEffSettled === lastMatchupId;
       const side = bar.children[i];
-      const text = info ? `${info[0]}|${info[2]}` : '';
+      const items = info && (raw || settled) ? [[info[0], raw?.played, 'played'], [raw?.leftEff ?? info[2], raw?.left, 'left']] : [];
+      const text = items.map((item) => item.join('/')).join('|');
       if (side.dataset.fxText === text) return;
       side.dataset.fxText = text;
       side.replaceChildren();
-      if (!info) return;
-      for (const [count, label] of [[info[0], 'played'], [info[2], 'left']]) {
+      for (const [eff, all, label] of items) {
         const item = document.createElement('span');
+        const name = document.createElement('i');
+        name.textContent = `${label} `;
         const num = document.createElement('b');
-        num.textContent = count;
-        item.append(num, ` ${label}`);
+        num.textContent = eff;
+        item.append(name, num, all === undefined ? '' : `/${all}`);
         side.append(item);
       }
     });
@@ -313,6 +384,7 @@
     applyDefault();
     ensureToggle();
     ensureScoreRow();
+    ensureTeamsRow();
     ensureGamesRow();
     ensureRange();
     syncDateLabel();

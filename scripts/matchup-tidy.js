@@ -17,6 +17,10 @@
     }
   };
 
+  const setStyle = (el, name, value) => {
+    if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
+  };
+
   const playerId = (aside) => aside.querySelector('.scorer__image')?.style.backgroundImage.match(/\/hs(\w+?)_/)?.[1] ?? null;
 
   const SECTION = 'app-league-livescoring ultimate-table > section';
@@ -67,6 +71,10 @@
           setAttr(aside, 'data-fx-idx', counted ? String(n) : null);
         });
       });
+      for (const ut of tables) {
+        const section = ut.querySelector(':scope > section');
+        if (section) setStyle(ut, '--fx-max', `${Math.max(0, section.scrollWidth - section.clientWidth)}px`);
+      }
       const first = tables[0]?.querySelector(':scope > section');
       if (first) alignScroll(first);
     }

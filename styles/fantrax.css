@@ -11,6 +11,15 @@ html {
   color: #fff !important;
 }
 
+/* Picking a player to drop: name and positions are tappable (see scripts/claim-drop.js) */
+app-league-team-roster[data-fx-pick] .i-table__body .scorer__info__name a,
+app-league-team-roster[data-fx-pick] .i-table__body .scorer__info__positions,
+app-league-team-roster[data-fx-pick] .i-table__body .lineup-btn {
+  cursor: pointer;
+  text-decoration: underline dotted #b42318;
+  text-underline-offset: 3px;
+}
+
 /* Roster: hide per-row Drop (minus) and Trade (arrows) buttons */
 [itablecell="actions"] {
   display: none !important;
@@ -144,7 +153,7 @@ scorer:has(.fx-inj) [class*="scorer-icon--INJ"] {
 
 /* ESPN-style matchup screen (see scripts/matchup-espn.js) */
 app-league-livescoring section.content__main__rows > * {
-  order: 6;
+  order: 7;
 }
 app-league-livescoring section.content__main__rows > headline,
 app-league-livescoring section.content__main__rows > top-ad {
@@ -156,17 +165,20 @@ app-league-livescoring section.content__main__rows > .livescoring-swipe-matchups
 app-league-livescoring section.content__main__rows > .fx-score {
   order: 2;
 }
-app-league-livescoring section.content__main__rows > .fx-games {
+app-league-livescoring section.content__main__rows > .fx-teams {
   order: 3;
 }
-app-league-livescoring section.content__main__rows > .fx-seg {
+app-league-livescoring section.content__main__rows > .fx-games {
   order: 4;
+}
+app-league-livescoring section.content__main__rows > .fx-seg {
+  order: 5;
 }
 app-league-livescoring section.content__main__rows > .fx-layout__pane--tab-group {
   display: contents;
 }
 app-league-livescoring section.content__main__rows > .fx-layout__pane--tab-group > .livescoring-mobile-filters {
-  order: 5;
+  order: 6;
 }
 /* Matchup/Summary tabs + layout icons are replaced by the segmented toggle */
 app-league-livescoring tab-group {
@@ -174,10 +186,14 @@ app-league-livescoring tab-group {
 }
 
 /* The matchup content stays hidden until it is complete (fx-ready, see scripts/matchup-espn.js), so it never shows half-loaded numbers */
-app-league-livescoring section.content__main__rows > *:not(headline):not(top-ad) {
+app-league-livescoring section.content__main__rows > * {
   transition: opacity 0.15s;
 }
-app-league-livescoring:not(.fx-ready) section.content__main__rows > *:not(headline):not(top-ad) {
+app-league-livescoring:not(.fx-ready) section.content__main__rows > * {
+  opacity: 0;
+  pointer-events: none;
+}
+app-league-livescoring:not(.fx-ready) section.content__main__rows > .fx-layout__pane--tab-group > * {
   opacity: 0;
   pointer-events: none;
 }
@@ -200,76 +216,6 @@ app-league-livescoring:not(.fx-ready) section.content__main__rows::after {
   }
 }
 
-/* Summary totals shown at once while the matchup page loads (see scripts/matchup-preview.js) */
-.fx-pre {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 96px;
-  z-index: 20;
-  overflow: hidden;
-  padding: 8px 0;
-  background: var(--fx-surface, #fff);
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-}
-.fx-pre--on {
-  opacity: 1;
-}
-.fx-pre__teams,
-.fx-pre__row {
-  display: grid;
-  grid-template-columns: 1fr 5.8rem 1fr;
-  align-items: center;
-}
-.fx-pre__teams {
-  grid-template-columns: 1fr 1fr;
-  padding: 6px 12px 10px;
-  color: var(--fx-ink);
-  font-family: var(--fx-num-font);
-  font-size: 1.6rem;
-}
-.fx-pre__teams b:last-child {
-  text-align: right;
-}
-.fx-pre__row {
-  height: 3.6rem;
-  border-top: 1px solid var(--fx-line);
-}
-.fx-pre__row span {
-  padding: 0 1.2rem;
-  color: #8e8e93;
-  font-family: var(--fx-num-font);
-  font-size: 1.7rem;
-  font-weight: 500;
-}
-.fx-pre__row span:first-child {
-  text-align: right;
-}
-.fx-pre__row .fx-pre__lead {
-  color: #000;
-  font-weight: 700;
-}
-.fx-pre__row i {
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ebebee;
-  color: var(--fx-muted);
-  font-family: "Barlow", sans-serif;
-  font-size: 1.25rem;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-body.theme--dark .fx-pre__row i {
-  background: #3a3a3f;
-}
-body.theme--dark .fx-pre__row .fx-pre__lead {
-  color: #fff;
-}
 
 /* Segmented toggle: [Team A | Summary | Team B] */
 .fx-seg {
@@ -462,6 +408,20 @@ app-league-livescoring .livescoring-mobile-filters {
   visibility: hidden;
 }
 
+/* Summary: no Day | Week switch, so Projected shares the period row: toggle on the left, period in the space left */
+app-league-livescoring .livescoring-mobile-filters.fx-summary {
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "proj date";
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.livescoring-mobile-filters.fx-summary > league-livescoring-filters-period > mat-form-field {
+  border: 0;
+}
+.livescoring-mobile-filters.fx-summary > .livescoring-mobile-filters__row:first-child {
+  padding-left: 12px;
+}
+
 /* Day | Week switch of the team tabs (see scripts/matchup-espn.js) */
 .fx-range {
   grid-area: tf;
@@ -625,7 +585,7 @@ app-league-livescoring headline h4 span {
 }
 .livescoring-mobile-filters .mat-mdc-select-value[data-fx-label]::after {
   color: #1a56c4;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 .livescoring-mobile-filters .mat-mdc-form-field-icon-suffix > button {
@@ -642,6 +602,29 @@ app-league-livescoring ultimate-table > header {
   top: var(--fx-score-h) !important;
   /* The header follows the body with a translateX; a scrollable header (swipe, focus) would shift it off its columns */
   overflow: clip !important;
+}
+/* Fantrax moves the header's columns from a scroll event, which lags a frame behind the body on touch devices.
+   Where supported, the body's scroll position drives the same shift as a scroll-linked animation instead
+   (--fx-max, the scrollable distance, is set by scripts/matchup-tidy.js). The animation beats Fantrax's inline transform. */
+@supports (timeline-scope: --fx-x) {
+  app-league-livescoring ultimate-table {
+    timeline-scope: --fx-x;
+  }
+  app-league-livescoring ultimate-table > section {
+    scroll-timeline: --fx-x x;
+  }
+  app-league-livescoring ultimate-table > header > tbody {
+    animation: fx-follow linear both;
+    animation-timeline: --fx-x;
+  }
+}
+@keyframes fx-follow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(var(--fx-max, 0px) * -1));
+  }
 }
 /* Fantrax's per-team headers are replaced by the sticky score row below (see scripts/matchup-espn.js) */
 app-league-livescoring league-livescoring-table-header,
@@ -662,7 +645,6 @@ app-league-livescoring {
   justify-content: space-between;
   padding: 0 16px;
   background: var(--fx-surface, #fff);
-  border-bottom: 1px solid var(--fx-line);
 }
 .fx-score > div {
   display: flex;
@@ -687,11 +669,41 @@ app-league-livescoring {
   color: var(--fx-ink);
   white-space: nowrap;
 }
+/* Team name + season record under the score, Summary tab only (see scripts/matchup-espn.js) */
+.fx-teams {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 16px 0;
+  font-family: "Barlow", sans-serif;
+}
+.fx-teams > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 48%;
+}
+.fx-teams > div:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+.fx-teams b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fx-ink);
+}
+.fx-teams span {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--fx-muted);
+}
 /* Games of the week under the score: "14 played · 21 left" per team */
 .fx-games {
   display: flex;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 6px;
   font-family: "Barlow", sans-serif;
   font-size: 1.3rem;
   font-weight: 500;
@@ -702,15 +714,29 @@ app-league-livescoring {
   display: flex;
   gap: 10px;
 }
-.fx-games b {
-  font-family: var(--fx-num-font);
-  font-size: 1.5rem;
+.fx-games i {
+  font-style: normal;
   font-weight: 700;
   color: var(--fx-ink);
+}
+.fx-games b {
+  font: inherit;
+  color: inherit;
 }
 .fx-games > div > span:last-child::before {
   content: "·";
   margin-right: 10px;
+}
+/* Legend for the two numbers */
+.fx-games {
+  flex-wrap: wrap;
+}
+.fx-games::after {
+  content: "effective / all";
+  flex: 0 0 100%;
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--fx-muted);
 }
 
 
@@ -773,8 +799,8 @@ app-league-livescoring ultimate-table td a {
 /* Team tabs: the player block sticks to the left and one row holds player + stats (Opp is a normal column).
    Fantrax overlays the player block on top of a padded stats row; here it is a sticky column instead. */
 app-league-livescoring ultimate-table {
-  --fx-player-w: 168px;
-  --fx-row-h: 56px;
+  --fx-player-w: 178px;
+  --fx-row-h: 60px;
   --fx-stat-size: 1.5rem; /* font size of the stat values on the matchup team tabs (same as the Players page) */
   --fx-stat-pad: 4px; /* left/right padding of every stat column, the same as the roster and Players tables */
 }
@@ -835,6 +861,11 @@ app-league-livescoring ultimate-table > section > ._ut__content td {
 app-league-livescoring ultimate-table > section > aside .scorer {
   min-width: 0;
   max-width: 100%;
+}
+app-league-livescoring ultimate-table > section > aside .scorer__image {
+  flex: none;
+  width: 4.2rem;
+  height: 4.2rem;
 }
 app-league-livescoring ultimate-table > section > aside .scorer__info {
   flex: 1 1 0;
@@ -1012,8 +1043,11 @@ app-league-livescoring.fx-loading ultimate-table .fx-col:not(th) {
   font-size: 1.3rem;
   font-weight: 600;
 }
-.fx-claims > span {
+.fx-claims > span:first-child {
   text-align: left;
+}
+.fx-claims > span:last-child {
+  text-align: right;
 }
 
 /* The "Player" band above the categories is redundant */
@@ -1391,8 +1425,8 @@ app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info_
 }
 app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__image {
   flex: none;
-  width: 3.6rem;
-  height: 3.6rem;
+  width: 4.2rem;
+  height: 4.2rem;
 }
 app-league-team-roster .i-table__body .i-table__cell--sticky-left .lineup-btn {
   flex: none;
@@ -1972,8 +2006,8 @@ app-league-players .i-table__body .i-table__cell--sticky-left .scorer__info__nam
 }
 app-league-players .i-table__body .i-table__cell--sticky-left .scorer__image {
   flex: none;
-  width: 3.6rem;
-  height: 3.6rem;
+  width: 4.2rem;
+  height: 4.2rem;
 }
 app-league-players .i-table__body .i-table__cell--sticky-left player-tx {
   flex: none;
