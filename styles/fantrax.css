@@ -2612,3 +2612,333 @@ body.theme--dark:has(app-league-home) {
   --color-sport--lighter: hsl(223 85% 72% / var(--opacity-sport--lighter));
   --color-sport--lightest: hsl(223 85% 72% / var(--opacity-sport--lightest));
 }
+
+/* ===== Match analyzer page (see scripts/match-analyzer.js) ===== */
+#fx-analyzer {
+  display: none;
+}
+body.fx-analyzer-open #fx-analyzer {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: block;
+  overflow-y: auto;
+  padding: 12px 0 110px;
+  background: var(--fx-bg, #fff);
+  color: var(--fx-ink);
+  font-family: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  -webkit-overflow-scrolling: touch;
+}
+/* While the analyzer is open, the Fantrax page behind it is not the current one */
+body.fx-analyzer-open .nav-mobile-menu__button.current:not(.fx-analyzer-btn) {
+  background: transparent;
+  color: #6c6c70;
+}
+body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analyzer-btn) {
+  color: var(--fx-muted);
+}
+.fx-analyzer-btn mat-icon {
+  background: transparent !important;
+}
+/* Five buttons plus the team logo: tighter labels */
+.nav-mobile-menu__bar .nav-mobile-menu__button b {
+  font-size: 1.1rem;
+  letter-spacing: 0;
+}
+
+.fx-an__head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0 16px;
+}
+.fx-an__head h2 {
+  margin: 0;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.fx-an__head span {
+  flex: 1;
+  color: var(--fx-muted);
+  font-size: 1.3rem;
+  font-weight: 500;
+  text-align: right;
+}
+.fx-an__head button {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fx-zebra);
+  color: var(--fx-ink);
+}
+.fx-an__head button mat-icon {
+  font-size: 20px;
+}
+.fx-an__hint {
+  margin: 24px 16px;
+  color: var(--fx-muted);
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+/* Day strip: days across, one row for me, my opponent and my open slots */
+.fx-an__strip {
+  margin-top: 10px;
+  padding: 0 8px;
+}
+.fx-an__strip table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.fx-an__strip th:first-child {
+  width: 22%;
+}
+.fx-an__strip tbody th {
+  padding: 8px 4px 8px 8px;
+  text-align: left;
+  font-weight: 500;
+}
+.fx-an__strip tbody th b {
+  display: block;
+  overflow: hidden;
+  color: var(--fx-ink);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-an__strip small {
+  display: block;
+  color: var(--fx-muted);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.fx-an__day button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fx-muted);
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.fx-an__day button b {
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.6rem;
+}
+.fx-an__day.is-today button b {
+  color: var(--fx-navy);
+}
+.fx-an__day.is-sel button {
+  background: var(--fx-navy);
+  color: #fff;
+}
+.fx-an__day.is-sel button b {
+  color: #fff;
+}
+.fx-an__day.is-past button {
+  opacity: 0.4;
+}
+.fx-an__totalh {
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fx-an__strip td {
+  padding: 6px 0;
+  border-top: 1px solid var(--fx-line);
+  text-align: center;
+}
+.fx-an__strip td b {
+  display: block;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.fx-an__strip tbody th {
+  border-top: 1px solid var(--fx-line);
+}
+.fx-an__opp td b {
+  color: var(--fx-muted);
+}
+.fx-an__strip td b.has-open {
+  color: var(--fx-navy);
+}
+.fx-an__cell.is-sel {
+  background: color-mix(in srgb, var(--fx-navy) 10%, transparent);
+}
+.fx-an__cell.is-past {
+  opacity: 0.5;
+}
+.fx-an__total {
+  background: var(--fx-zebra);
+}
+
+/* Free agents for the chosen day */
+.fx-an__pool {
+  margin-top: 18px;
+}
+.fx-an__pool h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 6px;
+  padding: 0 16px;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.fx-an__pool h3 span {
+  color: var(--fx-navy);
+  font-family: "Barlow", sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-transform: none;
+}
+.fx-an__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.fx-an__pool table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1.3rem;
+}
+.fx-an__pool th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--fx-line);
+  background: var(--fx-head, #f1f2f4);
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+.fx-an__pool td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--fx-line);
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.5rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.fx-an__pool tbody tr:nth-child(even) td {
+  background: var(--fx-zebra);
+}
+/* The player column stays while the stats scroll */
+.fx-an__pool th:first-child,
+.fx-an__pool td.fx-an__player {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 150px;
+  text-align: left;
+}
+.fx-an__pool td.fx-an__player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--fx-bg, #fff);
+  font-family: "Barlow", sans-serif;
+}
+.fx-an__pool tbody tr:nth-child(even) td.fx-an__player {
+  background: var(--fx-zebra);
+}
+.fx-an__player img {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--fx-chip, #eceef1);
+  object-fit: cover;
+}
+.fx-an__player b {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.fx-an__player small {
+  display: block;
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.fx-an__game {
+  color: var(--fx-muted) !important;
+  font-family: "Barlow", sans-serif !important;
+  font-size: 1.2rem !important;
+}
+.fx-an__fits {
+  color: var(--fx-navy) !important;
+  font-family: "Barlow", sans-serif !important;
+  font-size: 1.2rem !important;
+  font-weight: 700;
+}
+.fx-an__pool tr[data-st="W"] td:nth-child(5) {
+  color: #b54708;
+}
+.fx-an__pool tr[data-st="FA"] td:nth-child(5) {
+  color: #087443;
+}
+.fx-an__more {
+  display: block;
+  margin: 12px auto 0;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fx-navy);
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+body.theme--dark .fx-an__more,
+body.theme--dark .fx-an__day.is-sel button {
+  color: #0b0b0c;
+}
+body.theme--dark .fx-an__day.is-sel button b {
+  color: #0b0b0c;
+}
+
+/* The player card (a Fantrax dialog) opens above the analyzer page and the nav */
+body.fx-analyzer-open .cdk-overlay-container {
+  z-index: 1100 !important;
+}
+.fx-an__player {
+  cursor: pointer;
+}
+.fx-an__player b {
+  text-decoration: underline dotted var(--fx-muted);
+  text-underline-offset: 3px;
+}
+#fx-analyzer.is-opening {
+  cursor: progress;
+}
+#fx-analyzer.is-opening .fx-an__pool {
+  opacity: 0.6;
+  pointer-events: none;
+}
