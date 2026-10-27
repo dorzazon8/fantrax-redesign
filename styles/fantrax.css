@@ -2640,10 +2640,29 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
 .fx-analyzer-btn mat-icon {
   background: transparent !important;
 }
-/* Five buttons plus the team logo: tighter labels */
+/* Five buttons plus the team logo: equal-width buttons with room for the longest label ("Matchups", "Analyzer") */
+.nav-mobile-menu__bar {
+  padding: 0 4px !important;
+}
+.nav-mobile-menu__bar .nav-mobile-menu__button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
 .nav-mobile-menu__bar .nav-mobile-menu__button b {
-  font-size: 1.1rem;
+  max-width: 100%;
+  overflow: visible;
+  font-size: 1.05rem;
   letter-spacing: 0;
+  white-space: nowrap;
+}
+.nav-mobile-menu__bar > .nav-mobile-menu__league {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  margin-left: 4px;
+  margin-right: 2px;
 }
 
 .fx-an__head {
@@ -2898,12 +2917,6 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   font-size: 1.2rem !important;
   font-weight: 700;
 }
-.fx-an__pool tr[data-st="W"] td:nth-child(5) {
-  color: #b54708;
-}
-.fx-an__pool tr[data-st="FA"] td:nth-child(5) {
-  color: #087443;
-}
 .fx-an__more {
   display: block;
   margin: 12px auto 0;
@@ -2941,4 +2954,198 @@ body.fx-analyzer-open .cdk-overlay-container {
 #fx-analyzer.is-opening .fx-an__pool {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* Games of a free agent over the next days: a pip per day, filled when he plays */
+.fx-an__sched {
+  font-family: "Barlow", sans-serif !important;
+}
+.fx-an__pips {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+.fx-an__pips span {
+  min-width: 20px;
+  padding: 1px 0;
+  border-radius: 4px;
+  background: var(--fx-chip, #eceef1);
+  color: var(--fx-faint, #9a9aa0);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.fx-an__pips span.on {
+  background: var(--fx-navy);
+  color: #fff;
+}
+body.theme--dark .fx-an__pips span.on {
+  color: #0b0b0c;
+}
+.fx-an__sched small {
+  display: block;
+  margin-top: 2px;
+  color: var(--fx-muted);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* Add (claim) button in the player cell: green = free agent, yellow = on waivers, like the Players page */
+.fx-an__add {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #1f9d57;
+  color: #fff;
+}
+.fx-an__pool tr[data-st="W"] .fx-an__add {
+  background: #f2b705;
+  color: #1a1a1a;
+}
+.fx-an__add mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+.fx-an__game {
+  min-width: 52px;
+}
+.fx-an__game div {
+  line-height: 1.3;
+}
+/* The claim toast and the card sit above the analyzer page and the nav */
+body.fx-analyzer-open .fx-layout__overlay--tx,
+body.fx-analyzer-open .fx-layout__overlay--toasts {
+  z-index: 1150 !important;
+}
+
+/* Next-days chips: blue = he plays and fits my lineup that day, red = he plays but there is no slot for him */
+.fx-an__pips span.full {
+  background: #d92d20;
+  color: #fff;
+}
+
+.fx-an__legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 16px 0;
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.fx-an__legend i {
+  width: 10px;
+  height: 10px;
+  margin-left: 8px;
+  border-radius: 3px;
+  background: var(--fx-navy);
+}
+.fx-an__legend i:first-child {
+  margin-left: 0;
+}
+.fx-an__legend i.full {
+  background: #d92d20;
+}
+
+/* 4 / 7 day switch for the Next games column */
+.fx-an__span {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--fx-chip, #eceef1);
+}
+.fx-an__span button {
+  min-width: 34px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fx-muted);
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fx-an__span button[aria-pressed="true"] {
+  background: var(--fx-navy);
+  color: #fff;
+}
+body.theme--dark .fx-an__span button[aria-pressed="true"] {
+  color: #0b0b0c;
+}
+
+/* Seven chips have to fit next to the player on a phone */
+.fx-an__pips {
+  gap: 1px;
+}
+.fx-an__pips span {
+  min-width: 17px;
+  font-size: 0.95rem;
+}
+.fx-an__pool td.fx-an__sched {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+.fx-an__pool td.fx-an__game {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.fx-an__legend {
+  margin: 0 16px 8px;
+}
+
+/* Fantrax gives the sticky name column "bottom: 100px", which pushes the name block of each table's last two rows up
+   out of line with their stats; the column only needs to stick sideways */
+.i-table__cell--sticky-left {
+  top: auto !important;
+  bottom: auto !important;
+}
+
+/* The last content scrolls fully clear of the floating nav */
+app-league-players,
+app-league-team-roster,
+app-league-livescoring {
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Nav highlight: one pill that slides between pages (see scripts/nav-slide.js) */
+.nav-mobile-menu__bar {
+  position: relative;
+}
+.fx-nav-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: #e3e9f8;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.32s cubic-bezier(0.3, 0.9, 0.3, 1), width 0.32s cubic-bezier(0.3, 0.9, 0.3, 1), opacity 0.2s;
+}
+body.theme--dark .fx-nav-pill {
+  background: #14234f;
+}
+.nav-mobile-menu__bar .nav-mobile-menu__button {
+  z-index: 1;
+}
+.nav-mobile-menu__bar[data-fx-slide] .nav-mobile-menu__button.current,
+body.theme--dark .nav-mobile-menu__bar[data-fx-slide] .nav-mobile-menu__button.current {
+  background: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-nav-pill {
+    transition: none;
+  }
+}
+
+body.fx-analyzer-open .nav-mobile-menu__button.current:not(.fx-analyzer-btn) b {
+  font-weight: 600;
 }

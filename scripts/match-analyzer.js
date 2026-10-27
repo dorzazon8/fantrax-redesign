@@ -10,6 +10,7 @@
 
   const OPEN = 'fx-analyzer-open';
   const STEP = 10;
+  const SPANS = [4, 7]; // days ahead the "Next games" column can cover; "3 in 4" is judged over any 4 days
   const TTL_MS = 60000;
   const DAY_MS = 86400000;
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -18,7 +19,7 @@
   const CATS = ['FG%', 'FT%', '3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO'];
   const UTIL = '307';
 
-  let state = { loading: false, error: null, data: null, day: null, k: STEP, at: 0 };
+  let state = { loading: false, error: null, data: null, sel: new Set(), span: SPANS[0], k: STEP, at: 0 };
   const faCache = new Map(); // day -> { at, rows, header } | { loading: true }
   let root = null;
 
@@ -150,22 +151,26 @@
     for (const n of periods) {
       for (const t of teams) msgs.push(roster(t, n < today ? { period: String(n), timeframeTypeCode: 'BY_PERIOD' } : { period: String(n) }));
     }
+    const extra = Array.from({ length: Math.max(...SPANS) - 1 }, (_, k) => last + 1 + k);
+    for (const n of extra) msgs.push(roster(me, { period: String(n) }));
     const res = await call(msgs);
+    const dayInfo = (n, kind) => {
+      const t = base + (n - 1) * DAY_MS;
+      return { n, kind, date: isoDay(t), weekday: WEEKDAYS[new Date(t).getUTCDay()], dom: new Date(t).getUTCDate(), mon: MONTHS[new Date(t).getUTCMonth()] };
+    };
+    const after = extra.flatMap((n, k) => {
+      const data = res[periods.length * teams.length + k];
+      return data?.tables ? [{ ...dayInfo(n, 'future'), me: analyse(data, 'future'), opp: null }] : [];
+    });
     const days = periods.map((n, i) => {
       const kind = n < today ? 'past' : n === today ? 'today' : 'future';
-      const t = base + (n - 1) * DAY_MS;
       return {
-        n,
-        kind,
-        date: isoDay(t),
-        weekday: WEEKDAYS[new Date(t).getUTCDay()],
-        dom: new Date(t).getUTCDate(),
-        mon: MONTHS[new Date(t).getUTCMonth()],
+        ...dayInfo(n, kind),
         me: analyse(res[i * teams.length], kind),
         opp: opp ? analyse(res[i * teams.length + 1], kind) : null,
       };
     });
-    return { me, opp, names, today, days };
+    return { me, opp, names, today, days, after, base };
   };
 
   // ---- Free agents ----
@@ -175,33 +180,45 @@
     if (hit && (hit.loading || Date.now() - hit.at < TTL_MS)) return;
     faCache.set(date, { loading: true, at: hit?.at ?? 0, rows: hit?.rows, header: hit?.header });
     try {
-      const [res] = await call([{ method: 'getPlayerStats', data: { datePlaying: date, maxResultsPerPage: '200', scoringCategoryType: '1' } }]);
-      faCache.set(date, { at: Date.now(), rows: res?.statsTable ?? [], header: res?.tableHeader?.cells ?? [] });
+      const [res] = await call([{ method: 'getPlayerStats', data: { datePlaying: date, maxResultsPerPage: '500', scoringCategoryType: '1' } }]);
+      const rows = res?.statsTable ?? [];
+      faCache.set(date, { at: Date.now(), rows, header: res?.tableHeader?.cells ?? [], byId: new Map(rows.filter((r) => r.scorer && !r.scorer.team).map((r) => [r.scorer.scorerId, r])) });
     } catch {
-      faCache.set(date, { at: Date.now(), rows: [], header: [], failed: true });
+      faCache.set(date, { at: Date.now(), rows: [], header: [], byId: new Map(), failed: true });
     }
     render();
   };
 
-  // Free agents playing on the day who fit one of my open slots: directly (fits lists the open slot types they are
-  // eligible for) or by moving a rostered player to another slot (no fits listed)
-  const candidates = (day, pool) => {
-    const { slots, players, open } = day.me;
-    if (!open.length) return [];
-    const base = matched(players, slots);
-    const types = [...new Set(slots)];
-    const openTypes = new Set(open);
+  // Slot types a free agent could take on a day without displacing anyone: directly (an open slot) or by moving a
+  // rostered player to another slot. Empty when he does not fit that day's lineup.
+  const fitTypes = (day, scorer, game) => {
+    if (day.kind === 'today' && gameStarted(game)) return [];
+    const me = day.me;
+    me.plan ??= { base: matched(me.players, me.slots), types: [...new Set(me.slots)] };
+    const elig = new Set(scorer.posIds ?? []);
+    return me.plan.types.filter((p) => elig.has(p) && matched([...me.players, new Set([p])], me.slots) > me.plan.base);
+  };
+
+  const oppColumn = (pool) => pool.header.findIndex((c) => c.shortName === 'Opp');
+
+  // Free agents playing on every chosen day who fit one of my slots on each of those days (a day without open slots
+  // asks nothing of them)
+  const candidates = (days, pools) => {
+    if (!days.some((d) => d.me.open.length)) return [];
+    const maps = pools.map((pool) => pool.byId);
     const out = [];
-    for (const row of pool.rows) {
-      const sc = row.scorer;
-      if (!sc || sc.team) continue;
-      const opp = pool.header.findIndex((c) => c.shortName === 'Opp');
-      const game = row.cells?.[opp]?.content;
-      if (!plain(game)) continue;
-      if (day.kind === 'today' && gameStarted(game)) continue;
-      const elig = new Set(sc.posIds ?? []);
-      const fits = types.filter((p) => elig.has(p) && matched([...players, new Set([p])], slots) > base);
-      if (fits.length) out.push({ row, fits: fits.filter((p) => openTypes.has(p)) });
+    for (const [id, row] of maps[0]) {
+      const games = [];
+      let ok = true;
+      for (let i = 0; i < days.length && ok; i++) {
+        const r = maps[i].get(id);
+        const game = r?.cells?.[oppColumn(pools[i])]?.content;
+        if (!r || !plain(game)) ok = false;
+        else if (days[i].me.open.length && !fitTypes(days[i], r.scorer, game).length) ok = false;
+        else if (days[i].kind === 'today' && gameStarted(game)) ok = false;
+        else games.push(plain(game));
+      }
+      if (ok) out.push({ row, games });
     }
     return out.sort((a, b) => (a.row.scorer.rank ?? 1e9) - (b.row.scorer.rank ?? 1e9));
   };
@@ -220,8 +237,6 @@
     return el;
   };
 
-  const posLabel = (ids) => [...new Set(ids)].map((p) => POS[p] ?? p).join(' · ');
-
   // Open slots with their count: "C · Util ×2"
   const openLabel = (ids) => {
     const counts = new Map();
@@ -235,12 +250,12 @@
     const th = (d) =>
       h(
         'th',
-        { class: `fx-an__day${d.n === state.day ? ' is-sel' : ''}${d.kind === 'past' ? ' is-past' : ''}${d.kind === 'today' ? ' is-today' : ''}` },
+        { class: `fx-an__day${state.sel.has(d.n) ? ' is-sel' : ''}${d.kind === 'past' ? ' is-past' : ''}${d.kind === 'today' ? ' is-today' : ''}` },
         h('button', { type: 'button', disabled: d.kind === 'past', onclick: () => selectDay(d.n) }, h('span', null, d.weekday), h('b', null, String(d.dom))),
       );
     const cell = (d, team) => {
       const t = d[team];
-      return h('td', { class: `fx-an__cell${d.n === state.day ? ' is-sel' : ''}${d.kind === 'past' ? ' is-past' : ''}` }, h('b', null, String(t.raw)), h('small', null, String(t.eff)));
+      return h('td', { class: `fx-an__cell${state.sel.has(d.n) ? ' is-sel' : ''}${d.kind === 'past' ? ' is-past' : ''}` }, h('b', null, String(t.raw)), h('small', null, String(t.eff)));
     };
     const rows = [
       h('tr', { class: 'fx-an__me' }, h('th', { scope: 'row' }, h('b', null, names[data.me] ?? 'Me'), h('small', null, 'games / in slots')), days.map((d) => cell(d, 'me')), h('td', { class: 'fx-an__total' }, h('b', null, String(total('me', 'raw'))), h('small', null, String(total('me', 'eff'))))),
@@ -254,7 +269,7 @@
         { class: 'fx-an__free' },
         h('th', { scope: 'row' }, h('b', null, 'Open slots'), h('small', null, 'I can still fill')),
         days.map((d) =>
-          h('td', { class: `fx-an__cell${d.n === state.day ? ' is-sel' : ''}${d.kind === 'past' ? ' is-past' : ''}` }, d.kind === 'past' ? h('b', null, '–') : h('b', { class: d.me.open.length ? 'has-open' : '' }, String(d.me.open.length))),
+          h('td', { class: `fx-an__cell${state.sel.has(d.n) ? ' is-sel' : ''}${d.kind === 'past' ? ' is-past' : ''}` }, d.kind === 'past' ? h('b', null, '–') : h('b', { class: d.me.open.length ? 'has-open' : '' }, String(d.me.open.length))),
         ),
         h('td', { class: 'fx-an__total' }, h('b', null, String(days.reduce((s, d) => s + (d.kind === 'past' ? 0 : d.me.open.length), 0)))),
       ),
@@ -262,21 +277,42 @@
     return h('div', { class: 'fx-an__strip' }, h('table', null, h('thead', null, h('tr', null, h('th'), days.map(th), h('th', { class: 'fx-an__totalh' }, 'Total'))), h('tbody', null, rows)));
   };
 
+  const gameOpp = (text) => text.replace(/\s+(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w*\s+\d{1,2}:\d{2}\s*[AP]M.*$/i, '');
+
+  const scheduleCell = (scorer, win) => {
+    const sch = gamesOver(scorer, win);
+    if (!sch) return h('td', { class: 'fx-an__sched' }, '…');
+    const tags = [sch.b2b && 'B2B', sch.dense && '3 in 4'].filter(Boolean);
+    const label = state.span > 4 || !tags.length ? [`${sch.games} ${sch.games === 1 ? 'game' : 'games'}`, ...tags] : tags;
+    return h(
+      'td',
+      { class: 'fx-an__sched', title: `${sch.games} games in the next ${state.span} days: blue = fits my lineup, red = plays but no slot for him` },
+      h('div', { class: 'fx-an__pips' }, win.map((w, i) => h('span', { class: sch.days[i].fits ? 'on' : sch.days[i].plays ? 'full' : '' }, w.label))),
+      h('small', null, label.join(' · ')),
+    );
+  };
+
   const poolView = (data) => {
-    const day = data.days.find((d) => d.n === state.day);
-    if (!day) return h('p', { class: 'fx-an__hint' }, 'Tap a day to see the free agents who fit your open slots.');
-    const title = h('h3', null, `${day.weekday} ${day.mon} ${day.dom}`, h('span', null, day.me.open.length ? `${day.me.open.length} open: ${openLabel(day.me.open)}` : 'lineup full'));
-    const pool = faCache.get(day.date);
-    if (!day.me.open.length) return h('section', { class: 'fx-an__pool' }, title, h('p', { class: 'fx-an__hint' }, 'Every active slot is already filled by a player with a game.'));
-    if (!pool?.rows) return h('section', { class: 'fx-an__pool' }, title, h('p', { class: 'fx-an__hint' }, 'Loading free agents…'));
-    const list = candidates(day, pool);
+    const days = data.days.filter((d) => state.sel.has(d.n));
+    if (!days.length) return h('p', { class: 'fx-an__hint' }, 'Tap days to see the free agents who fit your open slots. Pick several to see who plays on all of them.');
+    const single = days.length === 1;
+    const open = days.map((d) => d.me.open.length);
+    const info = single ? (open[0] ? `${open[0]} open: ${openLabel(days[0].me.open)}` : 'lineup full') : `Open: ${days.map((d, i) => `${d.weekday} ${open[i]}`).join(' · ')}`;
+    const title = h('h3', null, days.map((d) => (single ? `${d.weekday} ${d.mon} ${d.dom}` : `${d.weekday} ${d.dom}`)).join(' + '), h('span', null, info));
+    const section = (...kids) => h('section', { class: 'fx-an__pool' }, title, ...kids);
+    if (!open.some((n) => n)) return section(h('p', { class: 'fx-an__hint' }, single ? 'Every active slot is already filled by a player with a game.' : 'No open slots on these days.'));
+    const pools = days.map((d) => faCache.get(d.date));
+    if (pools.some((pool) => !pool?.rows)) return section(h('p', { class: 'fx-an__hint' }, 'Loading free agents…'));
+    const list = candidates(days, pools);
     const shown = list.slice(0, state.k);
-    if (!list.length) return h('section', { class: 'fx-an__pool' }, title, h('p', { class: 'fx-an__hint' }, 'No free agent playing that day fits an open slot.'));
+    if (!list.length) return section(h('p', { class: 'fx-an__hint' }, single ? 'No free agent playing that day fits an open slot.' : 'No free agent plays on all these days and fits an open slot.'));
+    const pool = pools[0];
+    const win = windowDays();
 
     const col = (name) => pool.header.findIndex((c) => c.shortName === name);
     const cats = CATS.filter((c) => col(c) >= 0);
-    const head = h('tr', null, h('th', null, 'Player'), h('th', null, 'Game'), h('th', null, 'Fits'), h('th', null, 'Rk'), h('th', null, 'Sta'), cats.map((c) => h('th', null, c)));
-    const body = shown.map(({ row, fits }) => {
+    const head = h('tr', null, h('th', null, 'Player'), h('th', null, 'Opp'), h('th', null, 'Next games'), cats.map((c) => h('th', null, c)));
+    const body = shown.map(({ row, games }) => {
       const sc = row.scorer;
       const sta = plain(row.cells[col('Sta')]?.content);
       return h(
@@ -284,21 +320,57 @@
         { 'data-st': /^FA/i.test(sta) ? 'FA' : 'W' },
         h(
           'td',
-          { class: 'fx-an__player', onclick: () => openCard(sc) },
+          { class: 'fx-an__player', onclick: () => openPlayer(sc, 'card') },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'fx-an__add',
+              title: sta,
+              'aria-label': 'Add player',
+              onclick: (e) => {
+                e.stopPropagation();
+                openPlayer(sc, 'add');
+              },
+            },
+            h('mat-icon', { class: 'material-icons' }, 'add'),
+          ),
           h('img', { src: sc.headshotUrl ?? '', alt: '', loading: 'lazy' }),
           h('div', null, h('b', null, sc.shortName ?? sc.name), h('small', null, `${sc.posShortNames ?? ''} - ${sc.teamShortName ?? ''}`)),
         ),
-        h('td', { class: 'fx-an__game' }, plain(row.cells[col('Opp')]?.content)),
-        h('td', { class: 'fx-an__fits' }, fits.length ? posLabel(fits) : 'Shuffle'),
-        h('td', null, String(sc.rank ?? '')),
-        h('td', null, sta),
+        h('td', { class: 'fx-an__game' }, single ? gameOpp(games[0]) : games.map((g, i) => h('div', null, `${days[i].weekday.slice(0, 2)} ${gameOpp(g)}`))),
+        scheduleCell(sc, win),
         cats.map((c) => h('td', null, plain(row.cells[col(c)]?.content))),
       );
     });
-    return h(
-      'section',
-      { class: 'fx-an__pool' },
-      title,
+    return section(
+      h(
+        'p',
+        { class: 'fx-an__legend' },
+        h('i', { class: 'on' }),
+        ' fits my lineup',
+        h('i', { class: 'full' }),
+        ' plays, no slot for him',
+        h(
+          'span',
+          { class: 'fx-an__span', role: 'group', 'aria-label': 'Next games span' },
+          SPANS.map((n) =>
+            h(
+              'button',
+              {
+                type: 'button',
+                'aria-pressed': String(state.span === n),
+                onclick: () => {
+                  state.span = n;
+                  fetchSelected();
+                  render();
+                },
+              },
+              `${n}d`,
+            ),
+          ),
+        ),
+      ),
       h('div', { class: 'fx-an__scroll' }, h('table', null, h('thead', null, head), h('tbody', null, body))),
       list.length > shown.length && h('button', { type: 'button', class: 'fx-an__more', onclick: () => ((state.k += STEP), render()) }, `Show ${Math.min(STEP, list.length - shown.length)} more`),
     );
@@ -324,11 +396,44 @@
   };
 
   const selectDay = (n) => {
-    state.day = state.day === n ? null : n;
+    if (!state.sel.delete(n)) state.sel.add(n);
     state.k = STEP;
-    const day = state.data?.days.find((d) => d.n === n);
-    if (state.day != null && day) fetchPool(day.date);
+    fetchSelected();
     render();
+  };
+
+  // The days of the chosen span, always counted from today whatever days are selected: [{ date, label, day }]
+  const windowDays = () => {
+    const { data } = state;
+    if (!data) return [];
+    return Array.from({ length: state.span }, (_, k) => {
+      const t = data.base + (data.today - 1 + k) * DAY_MS;
+      const date = isoDay(t);
+      return { date, label: WEEKDAYS[new Date(t).getUTCDay()].slice(0, 2), day: [...data.days, ...data.after].find((d) => d.date === date) };
+    });
+  };
+
+  const fetchSelected = () => {
+    for (const d of state.data?.days ?? []) if (state.sel.has(d.n)) fetchPool(d.date);
+    for (const w of windowDays()) fetchPool(w.date);
+  };
+
+  // One player over the window: per day whether he plays and whether he fits my lineup that day, back-to-back,
+  // and the number of games
+  const gamesOver = (scorer, win) => {
+    const pools = win.map((w) => faCache.get(w.date));
+    if (pools.some((pool) => !pool?.byId)) return null;
+    const days = pools.map((pool, i) => {
+      const row = pool.byId.get(scorer.scorerId);
+      const game = row?.cells?.[oppColumn(pool)]?.content;
+      const plays = Boolean(row) && plain(game) !== '';
+      // a day outside the loaded rosters counts as a fit
+      const fits = plays && (!win[i].day || fitTypes(win[i].day, scorer, game).length > 0);
+      return { plays, fits };
+    });
+    const games = days.filter((d) => d.plays).length;
+    const dense = days.some((_, i) => days.slice(i, i + 4).filter((d) => d.plays).length >= 3);
+    return { days, games, dense, b2b: days.some((d, i) => d.plays && days[i + 1]?.plays) };
   };
 
   const refresh = async (force) => {
@@ -339,11 +444,11 @@
     try {
       state.data = await load();
       state.at = Date.now();
-      const day = state.data.days.find((d) => d.n === state.day);
-      if (!day) state.day = state.data.days.find((d) => d.kind !== 'past')?.n ?? null;
+      const valid = state.data.days.filter((d) => d.kind !== 'past').map((d) => d.n);
+      state.sel = new Set([...state.sel].filter((n) => valid.includes(n)));
+      if (!state.sel.size && valid.length) state.sel.add(valid[0]);
       faCache.clear();
-      const sel = state.data.days.find((d) => d.n === state.day);
-      if (sel) fetchPool(sel.date);
+      fetchSelected();
     } catch {
       state.error = true;
     } finally {
@@ -367,7 +472,9 @@
   };
 
   const rowIdOf = (row) => row.querySelector('.scorer__image')?.style.backgroundImage.match(/\/hs(\w+?)_/)?.[1];
-  const nameLink = (id) => [...document.querySelectorAll('app-league-players .i-table__body .i-table__row')].find((r) => rowIdOf(r) === id)?.querySelector('.scorer__info__name a');
+  const playerRow = (id) => [...document.querySelectorAll('app-league-players .i-table__body .i-table__row')].find((r) => rowIdOf(r) === id);
+  const nameLink = (row) => row?.querySelector('.scorer__info__name a');
+  const addButton = (row) => [...(row?.querySelectorAll('player-tx button') ?? [])].find((b) => b.querySelector('mat-icon')?.textContent.trim() === 'add');
   const searchBox = () => document.querySelector('app-league-players input.mat-mdc-input-element');
   const onPlayers = () => /\/players(;|\/?$)/.test(location.pathname);
   // matrix parameters (;searchName=...) come and go with the Players page filters, so they are not part of the route
@@ -381,14 +488,15 @@
 
   // The Players page should not stay filtered on this player, but refreshing its list under the card would close it
   const clearSearchWhenClosed = async () => {
-    while (document.querySelector('player-profile-content')) await wait(500);
+    while (document.querySelector('player-profile-content, player-tx-toast')) await wait(500);
     if (searchBox()?.value) search(searchBox(), '');
   };
 
   let driving = false;
   let origin = null; // route to go back to when the analyzer closes after the Players page was opened for a card
 
-  const openCard = async (scorer) => {
+  // action: 'card' opens the player card, 'add' starts Fantrax's own claim (the Claim toast with Submit / Continue to Drop)
+  const openPlayer = async (scorer, action) => {
     if (driving) return;
     driving = true;
     root?.classList.add('is-opening');
@@ -398,14 +506,19 @@
         document.querySelector('.nav-mobile-menu__button[href$="/players"]')?.click();
         if (!(await until(() => onPlayers() && searchBox(), 10000))) return;
       }
-      let link = nameLink(scorer.scorerId);
-      if (!link) {
+      const target = () => {
+        const row = playerRow(scorer.scorerId);
+        return action === 'add' ? addButton(row) : nameLink(row);
+      };
+      let el = target();
+      if (!el) {
         search(searchBox(), scorer.name);
-        link = await until(() => nameLink(scorer.scorerId), 6000);
+        el = await until(target, 6000);
       }
-      if (!link) return;
-      link.click();
-      if (await until(() => document.querySelector('player-profile-content'), 6000)) clearSearchWhenClosed();
+      if (!el) return;
+      el.click();
+      const shown = action === 'add' ? 'player-tx-toast' : 'player-profile-content';
+      if (await until(() => document.querySelector(shown), 6000)) clearSearchWhenClosed();
     } finally {
       driving = false;
       lastRoute = route();
