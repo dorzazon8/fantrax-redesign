@@ -796,6 +796,46 @@ app-league-livescoring ultimate-table td a {
   font-family: "Barlow", sans-serif;
   font-weight: 600;
 }
+/* Stats scrolled sideways (scripts/player-compact.js): the sticky player block narrows and its photo folds away, animated.
+   Registered so the lengths can transition; the photo (--fx-photo) and the block (--fx-sticky-w / --fx-player-w) animate together. */
+@property --fx-sticky-w {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 174px;
+}
+@property --fx-player-w {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 178px;
+}
+@property --fx-photo {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 42px;
+}
+app-league-team-roster,
+app-league-players {
+  transition: --fx-sticky-w 0.25s ease, --fx-photo 0.25s ease;
+}
+app-league-team-roster[data-fx-compact],
+app-league-players[data-fx-compact] {
+  --fx-sticky-w: 126px;
+  --fx-photo: 0px;
+}
+app-league-livescoring[data-fx-compact] ultimate-table {
+  --fx-player-w: 126px;
+  --fx-photo: 0px;
+}
+app-league-team-roster .scorer__image,
+app-league-players .scorer__image,
+app-league-livescoring ultimate-table .scorer__image {
+  transition: opacity 0.2s ease;
+}
+app-league-team-roster[data-fx-compact] .scorer__image,
+app-league-players[data-fx-compact] .scorer__image,
+app-league-livescoring[data-fx-compact] ultimate-table .scorer__image {
+  opacity: 0;
+}
 /* Team tabs: the player block sticks to the left and one row holds player + stats (Opp is a normal column).
    Fantrax overlays the player block on top of a padded stats row; here it is a sticky column instead. */
 app-league-livescoring ultimate-table {
@@ -864,7 +904,7 @@ app-league-livescoring ultimate-table > section > aside .scorer {
 }
 app-league-livescoring ultimate-table > section > aside .scorer__image {
   flex: none;
-  width: 4.2rem;
+  width: var(--fx-photo);
   height: 4.2rem;
 }
 app-league-livescoring ultimate-table > section > aside .scorer__info {
@@ -1016,9 +1056,11 @@ app-league-livescoring.fx-busy league-livescoring-summary-table {
   opacity: 0.35;
   pointer-events: none;
 }
-app-league-livescoring ultimate-table,
 app-league-livescoring league-livescoring-summary-table {
   transition: opacity 0.15s;
+}
+app-league-livescoring ultimate-table {
+  transition: opacity 0.15s, --fx-player-w 0.25s ease, --fx-photo 0.25s ease;
 }
 /* Split columns are filled by the roster API, a moment after Fantrax's own numbers */
 app-league-livescoring.fx-loading ultimate-table .fx-col:not(th) {
@@ -1184,7 +1226,7 @@ app-league-team-roster .fx-headline__filters button {
   color: var(--fx-ink);
 }
 app-league-team-roster section.content__main {
-  gap: 10px;
+  gap: 4px;
 }
 
 /* Team picker: flat, no Trade button */
@@ -1200,16 +1242,59 @@ app-league-team-roster league-team-select mat-select {
   box-shadow: none;
   font-weight: 600;
 }
+/* One row: logo, name, record, rank and owner side by side */
+app-league-team-roster league-team-select .mat-mdc-select-trigger {
+  height: 36px;
+}
+app-league-team-roster league-team-select .league-team-select__list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+app-league-team-roster league-team-select .league-team-select__list figure {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+app-league-team-roster league-team-select .league-team-select__list article {
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px;
+  min-width: 0;
+  height: auto !important;
+  white-space: nowrap;
+}
+app-league-team-roster league-team-select .league-team-select__list h5 {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+}
+app-league-team-roster league-team-select .league-team-select__list p {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  text-align: left;
+}
 
 /* Tabs: ESPN-style underline */
 app-league-team-roster .fx-layout__pane--tab-group {
   margin: 0 12px;
-  padding: 0;
+  padding: 0 10px !important;
   background: transparent;
   box-shadow: none;
   border-radius: 0;
 }
 app-league-team-roster .tabs__item {
+  height: 32px;
+  min-height: 0;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -1251,7 +1336,7 @@ app-league-team-roster filter-panel .mat-mdc-text-field-wrapper {
 app-league-team-roster filter-panel .mat-mdc-form-field-flex {
   display: flex;
   align-items: center;
-  height: 48px;
+  height: 36px;
   border-bottom: 1px solid var(--fx-line);
 }
 app-league-team-roster filter-panel .mat-mdc-form-field-infix {
@@ -1280,7 +1365,7 @@ app-league-team-roster filter-panel .mat-mdc-form-field-icon-suffix > button.mat
 }
 app-league-team-roster filter-panel .mat-mdc-select-value-text {
   color: #1a56c4;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 app-league-team-roster filter-panel .mat-mdc-select-trigger {
@@ -1290,6 +1375,9 @@ app-league-team-roster filter-panel mat-form-field {
   width: 100% !important;
 }
 app-league-team-roster filter-panel button.mat-mdc-icon-button:not([class*="mat-mdc-form-field"]) {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
   color: var(--fx-ink);
   background: #f1f1f3;
 }
@@ -1357,7 +1445,7 @@ app-league-team-roster .i-table__body table-cell a {
 app-league-team-roster .lineup-btn {
   background: #f1f1f3 !important;
   color: var(--fx-ink) !important;
-  border-color: transparent !important;
+  border: 1.5px solid var(--fx-navy) !important;
   font-family: var(--fx-num-font);
   font-weight: 700;
 }
@@ -1386,9 +1474,9 @@ app-league-team-roster .i-table__header > .i-table__cell--sticky-left {
   align-items: center;
   box-sizing: border-box;
   z-index: 2;
-  width: 17.4rem !important;
-  min-width: 17.4rem;
-  max-width: 17.4rem !important;
+  width: var(--fx-sticky-w) !important;
+  min-width: var(--fx-sticky-w);
+  max-width: var(--fx-sticky-w) !important;
   margin-left: 0 !important;
   padding-left: 8px;
   background: #fff;
@@ -1425,12 +1513,13 @@ app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__info_
 }
 app-league-team-roster .i-table__body .i-table__cell--sticky-left .scorer__image {
   flex: none;
-  width: 4.2rem;
+  width: var(--fx-photo);
   height: 4.2rem;
 }
 app-league-team-roster .i-table__body .i-table__cell--sticky-left .lineup-btn {
   flex: none;
 }
+
 
 /* Bench + injured reserve share one card, split from the active players by a narrow gray band */
 app-league-team-roster .i-table__row.row--amber,
@@ -1968,9 +2057,9 @@ app-league-players .i-table__header > .i-table__cell--sticky-left {
   display: flex !important;
   align-items: center;
   box-sizing: border-box;
-  width: 17.4rem !important;
-  min-width: 17.4rem;
-  max-width: 17.4rem !important;
+  width: var(--fx-sticky-w) !important;
+  min-width: var(--fx-sticky-w);
+  max-width: var(--fx-sticky-w) !important;
   margin-left: 0 !important;
   padding-left: 8px;
   background: #fff;
@@ -2006,7 +2095,7 @@ app-league-players .i-table__body .i-table__cell--sticky-left .scorer__info__nam
 }
 app-league-players .i-table__body .i-table__cell--sticky-left .scorer__image {
   flex: none;
-  width: 4.2rem;
+  width: var(--fx-photo);
   height: 4.2rem;
 }
 app-league-players .i-table__body .i-table__cell--sticky-left player-tx {
@@ -2276,6 +2365,128 @@ player-profile-content .i-table__body .i-table__cell {
 /* Players page: stat values gray too (zeros stay lighter); the player block keeps its own colors */
 app-league-players .i-table__body .i-table__cell:not(.i-table__cell--sticky-left):not(.cell--zero) {
   color: var(--fx-muted);
+}
+
+/* Players: "Trending" strip above the table (see scripts/players-trending.js) */
+.fx-trend {
+  --fx-up: #168a45;
+  margin: 2px 0 6px;
+  padding: 0 12px;
+}
+body.theme--dark .fx-trend {
+  --fx-up: #4cc27a;
+}
+.fx-trend__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0 8px;
+  border: 0;
+  background: none;
+  color: var(--fx-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.fx-trend__head h3 {
+  margin: 0;
+  font-family: var(--fx-num-font);
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.fx-trend__sub {
+  flex: 1;
+  color: var(--fx-muted);
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+.fx-trend__icon {
+  width: 20px;
+  height: 20px;
+  background: var(--fx-ink);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 18l7-7 4 4 8-9'/%3E%3Cpath d='M15 6h6v6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 18l7-7 4 4 8-9'/%3E%3Cpath d='M15 6h6v6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.fx-trend__chevron {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-right: 2px solid var(--fx-muted);
+  border-bottom: 2px solid var(--fx-muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.2s ease;
+}
+.fx-trend[data-collapsed] .fx-trend__chevron {
+  transform: rotate(-45deg);
+}
+.fx-trend[data-collapsed] .fx-trend__list {
+  display: none;
+}
+.fx-trend__list {
+  display: flex;
+  gap: 8px;
+  margin: 0 -12px;
+  padding: 0 12px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.fx-trend__list::-webkit-scrollbar {
+  display: none;
+}
+.fx-trend__card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  width: 92px;
+  padding: 8px 4px 7px;
+  border: 1px solid var(--fx-line);
+  border-radius: 12px;
+  background: var(--fx-zebra);
+  color: var(--fx-ink);
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+.fx-trend__photo {
+  width: 42px;
+  height: 42px;
+  margin: 0 0 5px;
+  border-radius: 50%;
+  background: var(--fx-line) center top / cover no-repeat;
+}
+.fx-trend__name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-trend__meta {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--fx-muted);
+  font-size: 1.05rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-trend__stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 3px;
+  color: var(--fx-muted);
+  font-family: var(--fx-num-font);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.fx-trend__stat b {
+  color: var(--fx-up);
+  font-weight: 700;
 }
 
 /* Players: merged FGM/FGA, FTM/FTA, 3PTM/3PTA columns (see scripts/players-shooting.js) */
@@ -2616,6 +2827,11 @@ body.theme--dark:has(app-league-home) {
 /* ===== Match analyzer page (see scripts/match-analyzer.js) ===== */
 #fx-analyzer {
   display: none;
+  /* Neutral dark gray for the days a player plays; selected choices get a navy ring, the navy stays on the main numbers */
+  --an-acc: #4a4e55;
+}
+body.theme--dark #fx-analyzer {
+  --an-acc: #c9ccd2;
 }
 body.fx-analyzer-open #fx-analyzer {
   position: fixed;
@@ -2623,7 +2839,7 @@ body.fx-analyzer-open #fx-analyzer {
   z-index: 900;
   display: block;
   overflow-y: auto;
-  padding: 12px 0 110px;
+  padding: 0 0 110px;
   background: var(--fx-bg, #fff);
   color: var(--fx-ink);
   font-family: "Barlow", "Helvetica Neue", Arial, sans-serif;
@@ -2667,9 +2883,10 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
 
 .fx-an__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
-  padding: 0 16px;
+  padding: 12px 16px 0;
 }
 .fx-an__head h2 {
   margin: 0;
@@ -2680,15 +2897,7 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   letter-spacing: 0.01em;
   text-transform: uppercase;
 }
-.fx-an__head span {
-  flex: 1;
-  color: var(--fx-muted);
-  font-size: 1.3rem;
-  font-weight: 500;
-  text-align: right;
-}
 .fx-an__head button {
-  align-self: center;
   display: grid;
   place-items: center;
   width: 32px;
@@ -2701,32 +2910,197 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
 .fx-an__head button mat-icon {
   font-size: 20px;
 }
+.fx-an__head button.is-spin mat-icon {
+  animation: fx-an-spin 0.9s linear infinite;
+}
+@keyframes fx-an-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.fx-an__sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 16px;
+  color: var(--fx-muted);
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+/* Claims left this week, pinned in the corner of the day bar: each add uses one */
+.fx-an__claims {
+  align-self: center;
+  padding: 2px 0;
+  border-radius: 8px;
+  background: var(--fx-chip, #eceef1);
+  text-align: center;
+  line-height: 1.1;
+}
+.fx-an__claims b {
+  display: block;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.7rem;
+}
+.fx-an__claims small {
+  display: block;
+  color: var(--fx-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.fx-an__claims.is-none {
+  background: #d92d20;
+}
+.fx-an__claims.is-none b,
+.fx-an__claims.is-none small {
+  color: #fff;
+}
 .fx-an__hint {
   margin: 24px 16px;
   color: var(--fx-muted);
   font-size: 1.4rem;
   text-align: center;
 }
+.fx-an__warn {
+  margin: 0 16px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #d92d20 12%, transparent);
+  color: #d92d20;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.fx-an__skels {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+.fx-an__skel {
+  height: 46px;
+  border-radius: 10px;
+  background: var(--fx-chip, #eceef1);
+  animation: fx-an-pulse 1.2s ease-in-out infinite;
+}
+.fx-an__skel.is-tall {
+  height: 120px;
+}
+@keyframes fx-an-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
 
-/* Day strip: days across, one row for me, my opponent and my open slots */
-.fx-an__strip {
-  margin-top: 10px;
-  padding: 0 8px;
+/* Day strip: a grid of rows (me, my opponent, the edge and my open slots) under the pinned day selector */
+.fx-an__grid {
+  display: grid;
+  grid-template-columns: 21% repeat(var(--n, 7), minmax(0, 1fr)) 13%;
+  align-items: center;
 }
-.fx-an__strip table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+.fx-an__sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-top: 8px;
+  background: var(--fx-bg, #fff);
 }
-.fx-an__strip th:first-child {
-  width: 22%;
+.fx-an__days {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--fx-line);
 }
-.fx-an__strip tbody th {
-  padding: 8px 4px 8px 8px;
-  text-align: left;
+/* A simulated add / drop is on: shown above the day bar, which then counts the simulated roster */
+.fx-an__sim {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 16px;
+  background: var(--an-acc);
+  color: #fff;
+  font-size: 1.2rem;
   font-weight: 500;
 }
-.fx-an__strip tbody th b {
+.fx-an__sim b {
+  margin-left: 4px;
+  font-weight: 700;
+}
+.fx-an__sim button {
+  flex: none;
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+body.theme--dark .fx-an__sim {
+  color: #0b0b0c;
+}
+body.theme--dark .fx-an__sim button {
+  background: rgba(0, 0, 0, 0.18);
+}
+.fx-an__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fx-muted);
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.fx-an__day b {
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.6rem;
+}
+.fx-an__day i {
+  min-height: 1.2rem;
+  color: var(--fx-faint, #9a9aa0);
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 700;
+}
+.fx-an__day i.has-open {
+  color: var(--fx-navy);
+}
+.fx-an__day.is-today b {
+  color: var(--fx-navy);
+}
+.fx-an__day.is-sel {
+  background: var(--fx-navy);
+  color: #fff;
+}
+.fx-an__day.is-sel b,
+.fx-an__day.is-sel i {
+  color: #fff;
+}
+.fx-an__day.is-past {
+  opacity: 0.4;
+}
+.fx-an__totalh {
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+.fx-an__strip {
+  padding: 0 8px;
+}
+.fx-an__row {
+  border-bottom: 1px solid var(--fx-line);
+}
+.fx-an__label {
+  min-width: 0;
+  padding: 6px 4px 6px 8px;
+}
+.fx-an__label b {
   display: block;
   overflow: hidden;
   color: var(--fx-ink);
@@ -2735,57 +3109,23 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.fx-an__strip small {
+.fx-an__label small,
+.fx-an__cell small {
   display: block;
   color: var(--fx-muted);
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.2;
 }
-.fx-an__day button {
+.fx-an__cell {
+  align-self: stretch;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
-  padding: 4px 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--fx-muted);
-  font-family: inherit;
-  font-size: 1.1rem;
-  font-weight: 600;
-  line-height: 1.25;
-}
-.fx-an__day button b {
-  color: var(--fx-ink);
-  font-family: var(--fx-num-font);
-  font-size: 1.6rem;
-}
-.fx-an__day.is-today button b {
-  color: var(--fx-navy);
-}
-.fx-an__day.is-sel button {
-  background: var(--fx-navy);
-  color: #fff;
-}
-.fx-an__day.is-sel button b {
-  color: #fff;
-}
-.fx-an__day.is-past button {
-  opacity: 0.4;
-}
-.fx-an__totalh {
-  color: var(--fx-muted);
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-.fx-an__strip td {
-  padding: 6px 0;
-  border-top: 1px solid var(--fx-line);
+  justify-content: center;
+  padding: 5px 0;
   text-align: center;
 }
-.fx-an__strip td b {
+.fx-an__cell b {
   display: block;
   color: var(--fx-ink);
   font-family: var(--fx-num-font);
@@ -2793,13 +3133,20 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   font-weight: 700;
   line-height: 1.1;
 }
-.fx-an__strip tbody th {
-  border-top: 1px solid var(--fx-line);
+.fx-an__cell small.is-lost {
+  color: #d92d20;
+  font-weight: 700;
 }
-.fx-an__opp td b {
+.fx-an__opp .fx-an__cell b {
   color: var(--fx-muted);
 }
-.fx-an__strip td b.has-open {
+.fx-an__foot b.is-up {
+  color: #168a45;
+}
+.fx-an__foot b.is-down {
+  color: #d92d20;
+}
+.fx-an__cell b.has-open {
   color: var(--fx-navy);
 }
 .fx-an__cell.is-sel {
@@ -2812,8 +3159,149 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   background: var(--fx-zebra);
 }
 
-/* Free agents for the chosen day */
-.fx-an__pool {
+/* Category outlook: my projected total – theirs, tinted by who is winning; tap to target a category */
+.fx-an__cats {
+  margin-top: 14px;
+}
+.fx-an__cats h3,
+.fx-an__drops h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 6px;
+  padding: 0 16px;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.fx-an__cats h3 span,
+.fx-an__drops h3 span {
+  color: var(--fx-muted);
+  font-family: "Barlow", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-transform: none;
+}
+.fx-an__catscroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fx-an__catscroll::-webkit-scrollbar {
+  display: none;
+}
+.fx-an__cattable {
+  --pad: 16px;
+  display: grid;
+  grid-template-columns: calc(62px + var(--pad)) repeat(var(--n, 9), 52px);
+  gap: 3px;
+  width: max-content;
+  padding-right: var(--pad);
+}
+.fx-an__catlabel {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding-left: var(--pad);
+  background: var(--fx-bg, #fff);
+  color: var(--fx-ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fx-an__cathead {
+  padding: 1px 0;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--fx-muted);
+  font-family: var(--fx-num-font);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+/* A navy ring marks a target category */
+.fx-an__cathead.is-target {
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px var(--fx-navy);
+  color: var(--fx-ink);
+}
+/* No colour fills: a navy line above the side that wins the category, nothing when it is close */
+.fx-an__catval {
+  padding: 1px 0 3px;
+  border-top: 3px solid transparent;
+  border-radius: 6px;
+  background: var(--fx-chip, #eceef1);
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+}
+.fx-an__catval[data-s="win"] {
+  border-top-color: var(--fx-navy);
+}
+/* What a simulated move changes in my totals */
+.fx-an__catchange {
+  padding: 2px 0;
+  color: var(--fx-muted);
+  font-family: var(--fx-num-font);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+.fx-an__catchange.is-up,
+.fx-an__changes .is-up {
+  color: #168a45;
+}
+.fx-an__catchange.is-down,
+.fx-an__changes .is-down {
+  color: #d92d20;
+}
+body.theme--dark .fx-an__catchange.is-up,
+body.theme--dark .fx-an__changes .is-up {
+  color: #4cc27a;
+}
+body.theme--dark .fx-an__catchange.is-down,
+body.theme--dark .fx-an__changes .is-down {
+  color: #f0605a;
+}
+/* "REB +12 · AST +3 · FT% −0.5%" under a move */
+.fx-an__changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.fx-an__plan {
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+}
+.fx-an__plan[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--fx-navy);
+}
+.fx-an__plan b {
+  color: var(--fx-ink);
+  font-size: 1.25rem;
+}
+
+/* Free agents for the chosen days */
+.fx-an__pool,
+.fx-an__drops {
   margin-top: 18px;
 }
 .fx-an__pool h3 {
@@ -2836,137 +3324,433 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   font-weight: 600;
   text-transform: none;
 }
-.fx-an__scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+
+/* Options: switches, sort and filter chips (rows of chips scroll sideways) */
+.fx-an__ctl {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 4px;
 }
-.fx-an__pool table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+.fx-an__opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+}
+.fx-an__chips {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fx-an__chips::-webkit-scrollbar {
+  display: none;
+}
+.fx-an__chips.is-wrap {
+  flex: none;
+  gap: 0;
+  padding: 2px;
+  overflow: visible;
+  border-radius: 999px;
+  background: var(--fx-chip, #eceef1);
+}
+.fx-an__chips button,
+.fx-an__tog {
+  flex: none;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fx-chip, #eceef1);
+  color: var(--fx-muted);
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fx-an__chips.is-wrap button {
+  padding: 3px 10px;
+}
+.fx-an__chips button:disabled {
+  opacity: 0.4;
+}
+/* A selected choice keeps its fill and gets a navy ring */
+.fx-an__chips button[aria-pressed="true"],
+.fx-an__tog[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--fx-navy);
+  color: var(--fx-ink);
+}
+.fx-an__chips.is-wrap button[aria-pressed="true"] {
+  background: var(--fx-bg, #fff);
+}
+.fx-an__search {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--fx-line);
+  border-radius: 999px;
+  background: var(--fx-bg, #fff);
+  color: var(--fx-ink);
+  font-family: inherit;
   font-size: 1.3rem;
 }
-.fx-an__pool th {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--fx-line);
-  background: var(--fx-head, #f1f2f4);
+.fx-an__legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 16px;
   color: var(--fx-muted);
   font-size: 1.1rem;
-  font-weight: 700;
-  text-align: center;
+  font-weight: 500;
   white-space: nowrap;
 }
-.fx-an__pool td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--fx-line);
-  color: var(--fx-ink);
-  font-family: var(--fx-num-font);
-  font-size: 1.5rem;
-  text-align: center;
-  white-space: nowrap;
+.fx-an__legend i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-left: 8px;
+  border-radius: 3px;
+  background: var(--an-acc);
 }
-.fx-an__pool tbody tr:nth-child(even) td {
+.fx-an__legend i:first-child {
+  margin-left: 0;
+}
+.fx-an__legend i.full {
+  background: #d92d20;
+}
+.fx-an__legend i.next {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--an-acc);
+}
+.fx-an__legend i.out {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--fx-faint, #9a9aa0);
+}
+.fx-an__legend span {
+  margin-left: auto;
+}
+
+/* A free agent in two lines: add button, photo, name, net games and expected categories; schedule and who goes.
+   Tap to open the stats, game times and the add / drop tests */
+.fx-an__card {
+  display: grid;
+  gap: 4px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--fx-line);
+  cursor: pointer;
+}
+.fx-an__card:nth-child(even) {
   background: var(--fx-zebra);
 }
-/* The player column stays while the stats scroll */
-.fx-an__pool th:first-child,
-.fx-an__pool td.fx-an__player {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  min-width: 150px;
-  text-align: left;
+.fx-an__card.is-weak:not(.is-open) {
+  opacity: 0.6;
 }
-.fx-an__pool td.fx-an__player {
+.fx-an__top {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--fx-bg, #fff);
-  font-family: "Barlow", sans-serif;
 }
-.fx-an__pool tbody tr:nth-child(even) td.fx-an__player {
-  background: var(--fx-zebra);
-}
-.fx-an__player img {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--fx-chip, #eceef1);
-  object-fit: cover;
-}
-.fx-an__player b {
-  display: block;
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-.fx-an__player small {
-  display: block;
+.fx-an__line2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 36px;
   color: var(--fx-muted);
   font-size: 1.1rem;
   font-weight: 500;
 }
-.fx-an__game {
-  color: var(--fx-muted) !important;
-  font-family: "Barlow", sans-serif !important;
-  font-size: 1.2rem !important;
+.fx-an__line2 .fx-an__chev {
+  margin-left: auto;
+  font-style: normal;
 }
-.fx-an__fits {
-  color: var(--fx-navy) !important;
-  font-family: "Barlow", sans-serif !important;
-  font-size: 1.2rem !important;
+.fx-an__detail {
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+  cursor: default;
+}
+.fx-an__ph {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 38px;
+}
+.fx-an__ph img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--fx-chip, #eceef1);
+  object-fit: cover;
+}
+/* Injury status on the photo (O out, D doubtful, Q questionable, P probable), like the Roster and Players pages */
+.fx-an__inj {
+  position: absolute;
+  left: 50%;
+  bottom: -0.6rem;
+  transform: translateX(-50%);
+  min-width: 1.6rem;
+  padding: 0 0.3rem;
+  border-radius: 0.4rem;
+  box-shadow: 0 0 0 1.5px var(--fx-bg, #fff);
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2rem;
+}
+.fx-an__inj[data-status="O"] {
+  color: #fff;
+  background: #b42318;
+}
+.fx-an__inj[data-status="P"] {
+  color: #15803d;
+  background: #dcfce7;
+}
+.fx-an__inj[data-status="D"] {
+  color: #a16207;
+  background: #fef08a;
+}
+.fx-an__inj[data-status="Q"] {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+body.theme--dark .fx-an__inj[data-status="P"] {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.18);
+}
+body.theme--dark .fx-an__inj[data-status="D"] {
+  color: #fde047;
+  background: rgba(234, 179, 8, 0.2);
+}
+body.theme--dark .fx-an__inj[data-status="Q"] {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.22);
+}
+.fx-an__who {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.fx-an__who b {
+  display: block;
+  overflow: hidden;
+  color: var(--fx-ink);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-decoration: underline dotted var(--fx-muted);
+  text-underline-offset: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-an__who small {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.fx-an__who em {
+  font-style: normal;
+  font-weight: 600;
+}
+.fx-an__who em.is-hurt {
+  color: #d92d20;
+}
+.fx-an__who u {
+  margin-left: 3px;
+  text-decoration: none;
+}
+.fx-an__who u.is-up {
+  color: #168a45;
+}
+.fx-an__who u.is-down {
+  color: #d92d20;
+}
+.fx-an__gain {
+  flex: none;
+  min-width: 42px;
+  text-align: center;
+}
+.fx-an__gain b {
+  display: block;
+  color: var(--fx-navy);
+  font-family: var(--fx-num-font);
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.fx-an__gain small {
+  color: var(--fx-muted);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.fx-an__when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.fx-an__stats {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 2px;
+  text-align: center;
+}
+.fx-an__stats > div {
+  padding: 2px 0;
+  border-radius: 6px;
+}
+.fx-an__stats small {
+  display: block;
+  color: var(--fx-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.fx-an__stats b {
+  display: block;
+  color: var(--fx-ink);
+  font-family: var(--fx-num-font);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.fx-an__stats i {
+  display: block;
+  min-height: 1.1rem;
+  color: var(--fx-faint, #9a9aa0);
+  font-size: 0.9rem;
+  font-style: normal;
+  font-weight: 500;
+}
+/* Target categories, and the ones where he is well above / below the league */
+.fx-an__stats .is-t {
+  background: color-mix(in srgb, var(--an-acc) 14%, transparent);
+}
+.fx-an__stats .is-hi b {
+  color: #168a45;
+}
+.fx-an__stats .is-lo b {
+  color: #d92d20;
+}
+.fx-an__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  color: var(--fx-muted);
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+.fx-an__foot b {
+  color: var(--fx-ink);
   font-weight: 700;
 }
+.fx-an__gain.is-swap b {
+  color: var(--fx-muted);
+}
+.fx-an__delta b {
+  color: var(--fx-muted);
+  font-size: 2rem;
+}
+.fx-an__delta b.is-up {
+  color: #168a45;
+}
+.fx-an__delta b.is-down {
+  color: #d92d20;
+}
+.fx-an__hint.is-tight {
+  margin: 0 16px 8px;
+  font-size: 1.2rem;
+}
+
 .fx-an__more {
   display: block;
   margin: 12px auto 0;
   padding: 8px 18px;
   border: 0;
   border-radius: 999px;
-  background: var(--fx-navy);
+  background: var(--an-acc);
   color: #fff;
   font-family: inherit;
   font-size: 1.3rem;
   font-weight: 600;
 }
 body.theme--dark .fx-an__more,
-body.theme--dark .fx-an__day.is-sel button {
+body.theme--dark .fx-an__day.is-sel,
+body.theme--dark .fx-an__day.is-sel b,
+body.theme--dark .fx-an__day.is-sel i {
   color: #0b0b0c;
 }
-body.theme--dark .fx-an__day.is-sel button b {
-  color: #0b0b0c;
+
+/* Up / down colours that stay readable on the dark theme */
+body.theme--dark .fx-an__foot b.is-up,
+body.theme--dark .fx-an__who u.is-up,
+body.theme--dark .fx-an__stats .is-hi b {
+  color: #4cc27a;
+}
+body.theme--dark .fx-an__foot b.is-down,
+body.theme--dark .fx-an__who u.is-down,
+body.theme--dark .fx-an__stats .is-lo b,
+body.theme--dark .fx-an__cell small.is-lost {
+  color: #f0605a;
+}
+body.theme--dark .fx-an__delta b.is-up {
+  color: #4cc27a;
+}
+body.theme--dark .fx-an__delta b.is-down {
+  color: #f0605a;
+}
+
+/* Droppable: the players I would drop, as chips (Edit lists my whole roster to choose from) */
+.fx-an__dropchips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+}
+.fx-an__dropchips .fx-an__tog i {
+  margin-left: 5px;
+  font-size: 1.05rem;
+  font-style: normal;
+  opacity: 0.75;
+}
+.fx-an__dropchips .fx-an__edit {
+  margin-left: auto;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--fx-navy);
+  color: var(--fx-navy);
+}
+.fx-an__none {
+  color: var(--fx-muted);
+  font-size: 1.2rem;
 }
 
 /* The player card (a Fantrax dialog) opens above the analyzer page and the nav */
 body.fx-analyzer-open .cdk-overlay-container {
   z-index: 1100 !important;
 }
-.fx-an__player {
-  cursor: pointer;
-}
-.fx-an__player b {
-  text-decoration: underline dotted var(--fx-muted);
-  text-underline-offset: 3px;
-}
 #fx-analyzer.is-opening {
   cursor: progress;
 }
-#fx-analyzer.is-opening .fx-an__pool {
+#fx-analyzer.is-opening .fx-an__pool,
+#fx-analyzer.is-opening .fx-an__drops {
   opacity: 0.6;
   pointer-events: none;
 }
 
-/* Games of a free agent over the next days: a pip per day, filled when he plays */
-.fx-an__sched {
-  font-family: "Barlow", sans-serif !important;
-}
+/* A chip per day: blue = he plays and fits my lineup, red = he plays but there is no slot for him, outlined = next week
+   (no lineup to judge by yet); a ring marks the days I chose */
 .fx-an__pips {
   display: flex;
+  align-items: center;
   gap: 2px;
-  justify-content: center;
 }
 .fx-an__pips span {
-  min-width: 20px;
+  min-width: 22px;
   padding: 1px 0;
   border-radius: 4px;
   background: var(--fx-chip, #eceef1);
@@ -2974,23 +3758,44 @@ body.fx-analyzer-open .cdk-overlay-container {
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.3;
+  text-align: center;
 }
 .fx-an__pips span.on {
-  background: var(--fx-navy);
+  background: var(--an-acc);
   color: #fff;
+}
+.fx-an__pips span.full {
+  background: #d92d20;
+  color: #fff;
+}
+.fx-an__pips span.next {
+  background: transparent;
+  color: var(--an-acc);
+  box-shadow: inset 0 0 0 1.5px var(--an-acc);
+}
+/* Scheduled but injured that day */
+.fx-an__pips span.out {
+  background: transparent;
+  color: var(--fx-faint, #9a9aa0);
+  text-decoration: line-through;
+  box-shadow: inset 0 0 0 1.5px var(--fx-faint, #9a9aa0);
+}
+.fx-an__pips span.sel {
+  outline: 2px solid var(--fx-ink);
+  outline-offset: 1px;
+}
+/* Divider between this week and next */
+.fx-an__pips em {
+  width: 1.5px;
+  height: 14px;
+  margin: 0 3px;
+  background: var(--fx-line);
 }
 body.theme--dark .fx-an__pips span.on {
   color: #0b0b0c;
 }
-.fx-an__sched small {
-  display: block;
-  margin-top: 2px;
-  color: var(--fx-muted);
-  font-size: 1.05rem;
-  font-weight: 600;
-}
 
-/* Add (claim) button in the player cell: green = free agent, yellow = on waivers, like the Players page */
+/* Add (claim) button: green = free agent, yellow = on waivers, like the Players page */
 .fx-an__add {
   display: grid;
   flex: none;
@@ -3003,102 +3808,22 @@ body.theme--dark .fx-an__pips span.on {
   background: #1f9d57;
   color: #fff;
 }
-.fx-an__pool tr[data-st="W"] .fx-an__add {
+.fx-an__card[data-st="W"] .fx-an__add {
   background: #f2b705;
   color: #1a1a1a;
+}
+.fx-an__add.is-off {
+  opacity: 0.4;
 }
 .fx-an__add mat-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
 }
-.fx-an__game {
-  min-width: 52px;
-}
-.fx-an__game div {
-  line-height: 1.3;
-}
 /* The claim toast and the card sit above the analyzer page and the nav */
 body.fx-analyzer-open .fx-layout__overlay--tx,
 body.fx-analyzer-open .fx-layout__overlay--toasts {
   z-index: 1150 !important;
-}
-
-/* Next-days chips: blue = he plays and fits my lineup that day, red = he plays but there is no slot for him */
-.fx-an__pips span.full {
-  background: #d92d20;
-  color: #fff;
-}
-
-.fx-an__legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 16px 0;
-  color: var(--fx-muted);
-  font-size: 1.1rem;
-  font-weight: 500;
-}
-.fx-an__legend i {
-  width: 10px;
-  height: 10px;
-  margin-left: 8px;
-  border-radius: 3px;
-  background: var(--fx-navy);
-}
-.fx-an__legend i:first-child {
-  margin-left: 0;
-}
-.fx-an__legend i.full {
-  background: #d92d20;
-}
-
-/* 4 / 7 day switch for the Next games column */
-.fx-an__span {
-  display: inline-flex;
-  margin-left: auto;
-  padding: 2px;
-  border-radius: 999px;
-  background: var(--fx-chip, #eceef1);
-}
-.fx-an__span button {
-  min-width: 34px;
-  padding: 3px 10px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--fx-muted);
-  font-family: inherit;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-.fx-an__span button[aria-pressed="true"] {
-  background: var(--fx-navy);
-  color: #fff;
-}
-body.theme--dark .fx-an__span button[aria-pressed="true"] {
-  color: #0b0b0c;
-}
-
-/* Seven chips have to fit next to the player on a phone */
-.fx-an__pips {
-  gap: 1px;
-}
-.fx-an__pips span {
-  min-width: 17px;
-  font-size: 0.95rem;
-}
-.fx-an__pool td.fx-an__sched {
-  padding-left: 4px;
-  padding-right: 4px;
-}
-.fx-an__pool td.fx-an__game {
-  padding-left: 4px;
-  padding-right: 4px;
-}
-
-.fx-an__legend {
-  margin: 0 16px 8px;
 }
 
 /* Fantrax gives the sticky name column "bottom: 100px", which pushes the name block of each table's last two rows up
