@@ -54,7 +54,6 @@
         .map((r) => ({
           id: r.scorer.scorerId,
           name: r.scorer.shortName,
-          fullName: r.scorer.name,
           team: r.scorer.teamShortName,
           pos: trimPositions(r.scorer.posShortNames),
           photo: r.scorer.headshotUrl,
@@ -70,56 +69,11 @@
     }
   };
 
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const until = async (fn, ms) => {
-    for (const end = Date.now() + ms; Date.now() < end; await wait(100)) {
-      const v = fn();
-      if (v) return v;
-    }
-    return null;
-  };
-
-  const nameLinkOf = (id) => {
-    for (const fig of document.querySelectorAll('app-league-players .i-table__body figure.scorer__image')) {
-      const bg = fig.style.backgroundImage || getComputedStyle(fig).backgroundImage;
-      if (bg.includes(`/hs${id}_`)) return fig.closest('.i-table__row')?.querySelector('.scorer__info__name a');
-    }
-    return null;
-  };
-
-  const searchBox = () => document.querySelector('app-league-players input.mat-mdc-input-element');
-
-  const search = (input, text) => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, text);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    for (const type of ['keydown', 'keypress', 'keyup']) input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-  };
-
-  // The table is not filtered on this player any more once his card is closed (refreshing it under the card would close it)
-  const clearSearchWhenClosed = async () => {
-    while (document.querySelector('player-profile-content')) await wait(500);
-    if (searchBox()?.value) search(searchBox(), '');
-  };
-
-  let opening = false;
-
-  // Opens Fantrax's own player card through the matching table row. A trending player is often not on the shown page
-  // of the table, so he is searched by name first.
-  const openCard = async (player) => {
-    if (opening) return;
-    opening = true;
-    try {
-      let link = nameLinkOf(player.id);
-      if (!link && searchBox()) {
-        search(searchBox(), player.fullName ?? player.name);
-        link = await until(() => nameLinkOf(player.id), 6000);
-      }
-      if (!link) return;
-      link.click();
-      if (await until(() => document.querySelector('player-profile-content'), 6000)) clearSearchWhenClosed();
-    } finally {
-      opening = false;
-    }
+  // Opens the player's own page (/player/<id>/<league>) through the app's router, like a link would. Back (the browser's
+  // or Android's) returns to the Players page exactly as it was: the filters and the list are never touched.
+  const openCard = (player) => {
+    history.pushState(history.state, '', `/player/${player.id}/${leagueId()}`);
+    window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
   };
 
   const el = (tag, className, text) => {

@@ -2237,6 +2237,51 @@ player-profile-content .player-profile__header__more {
   font-weight: 600;
 }
 
+/* Player page (see scripts/player-page.js): close button, and the player info folded behind "more" like in the dialog */
+player-profile-content[data-fx-page] .player-profile__header {
+  position: relative;
+}
+player-profile-content[data-fx-page] .player-profile__header__x {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+player-profile-content[data-fx-page] .fx-more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 0 auto;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f1f3;
+  color: var(--fx-ink);
+  font-family: inherit;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+player-profile-content[data-fx-page] .fx-more__chev {
+  width: 7px;
+  height: 7px;
+  margin-right: 2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+player-profile-content[data-fx-page] .fx-more__chev.is-open {
+  transform: translateY(2px) rotate(-135deg);
+}
+player-profile-content[data-fx-page]:not([data-fx-open]) .player-profile__bio {
+  display: none;
+}
+body.theme--dark player-profile-content[data-fx-page] .fx-more {
+  background: var(--fx-chip);
+}
+
 /* Tabs: underline, like the roster page */
 player-profile-content tab-group {
   margin: 0 12px;
