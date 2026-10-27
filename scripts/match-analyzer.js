@@ -329,7 +329,8 @@
       ? CATS.map((c) => {
           const [a, b] = [catValue(c, totals[0].total), catValue(c, totals[1].total)];
           const lead = c === 'TO' ? b - a : a - b;
-          const tol = SPLIT[c] ? 0.02 : 0.08 * Math.max(Math.abs(a), Math.abs(b), 1);
+          // the margin that counts as close is one standard deviation of the gap: counting stats vary like sqrt(total)
+          const tol = SPLIT[c] ? 0.02 : Math.max(Math.sqrt(Math.abs(a) + Math.abs(b)), 1);
           return { c, me: a, opp: b, lead, tol, state: Math.abs(lead) <= tol ? 'close' : lead > 0 ? 'win' : 'lose' };
         })
       : [];
@@ -754,7 +755,7 @@
     const tone = (o, mine) => (o.state === 'close' ? 'close' : (o.state === 'win') === mine ? 'win' : 'lose');
     const row = (label, mine) => [
       h('div', { class: 'fx-an__catlabel' }, label),
-      ...outlook.map((o) => h('div', { class: 'fx-an__catval', 'data-s': tone(o, mine) }, fmtCat(o.c, mine ? o.me : o.opp))),
+      ...outlook.map((o) => h('div', { class: `fx-an__catval${mine ? '' : ' is-opp'}${state.targets.has(o.c) ? ' is-target' : ''}`, 'data-s': tone(o, mine) }, fmtCat(o.c, mine ? o.me : o.opp))),
     ];
     return h(
       'div',
@@ -766,7 +767,7 @@
         outlook.map((o) => h('button', { type: 'button', class: `fx-an__cathead${state.targets.has(o.c) ? ' is-target' : ''}`, 'aria-pressed': String(state.targets.has(o.c)), onclick: () => toggleTarget(o.c) }, o.c)),
         row('Me', true),
         row(names[opp] ?? 'Opp', false),
-        deltas && [h('div', { class: 'fx-an__catlabel' }, 'Change'), ...deltas.map((x) => h('div', { class: `fx-an__catchange ${Math.abs(x.d) / x.tol < 0.03 ? '' : x.good ? 'is-up' : 'is-down'}` }, fmtDelta(x.c, x.d)))],
+        deltas && [h('div', { class: 'fx-an__catlabel' }, 'Change'), ...deltas.map((x) => h('div', { class: `fx-an__catchange${state.targets.has(x.c) ? ' is-target' : ''} ${Math.abs(x.d) / x.tol < 0.03 ? '' : x.good ? 'is-up' : 'is-down'}` }, fmtDelta(x.c, x.d)))],
       ),
     );
   };

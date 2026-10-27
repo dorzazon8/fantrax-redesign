@@ -3225,18 +3225,19 @@ body.theme--dark .fx-an__sim button {
   font-size: 1.1rem;
   font-weight: 700;
 }
-/* A navy ring marks a target category */
+/* A target category has a blue-tinted header */
 .fx-an__cathead.is-target {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 2px var(--fx-navy);
+  background: color-mix(in srgb, var(--fx-navy) 16%, transparent);
   color: var(--fx-ink);
 }
-/* No colour fills: a navy line above the side that wins the category, nothing when it is close */
+/* No colour fills: a navy line on the outer edge of the side that wins the category (above mine, below theirs),
+   nothing when it is close */
 .fx-an__catval {
   padding: 1px 0 3px;
   border-top: 3px solid transparent;
   border-radius: 6px;
-  background: var(--fx-chip, #eceef1);
+  background: var(--fx-bg, #fff);
   color: var(--fx-ink);
   font-family: var(--fx-num-font);
   font-size: 1.35rem;
@@ -3244,9 +3245,19 @@ body.theme--dark .fx-an__sim button {
   line-height: 1.1;
   text-align: center;
 }
+.fx-an__catval.is-opp {
+  padding: 3px 0 1px;
+  border-top: 0;
+  border-bottom: 3px solid transparent;
+}
 .fx-an__catval[data-s="win"] {
   border-top-color: var(--fx-navy);
 }
+.fx-an__catval.is-opp[data-s="win"] {
+  border-top-color: transparent;
+  border-bottom-color: var(--fx-navy);
+}
+
 /* What a simulated move changes in my totals */
 .fx-an__catchange {
   padding: 2px 0;
