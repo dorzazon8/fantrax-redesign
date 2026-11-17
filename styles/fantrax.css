@@ -141,6 +141,10 @@ figure.scorer__image {
 scorer:has(.fx-inj) [class*="scorer-icon--INJ"] {
   display: none !important;
 }
+/* Matchup tables: no news icon next to the player (hidden, not removed: scripts/injury-badge.js reads its tooltip) */
+app-league-livescoring ultimate-table [class*="scorer-icon--PLAYER_NEWS"] {
+  display: none !important;
+}
 
 /* Matchup: neutral gray column between the two sides' scores (was orange tint) */
 .league-livescoring-summary__row > div,
@@ -823,7 +827,7 @@ app-league-players[data-fx-compact] {
   --fx-photo: 0px;
 }
 app-league-livescoring[data-fx-compact] ultimate-table {
-  --fx-player-w: 126px;
+  --fx-player-w: 100px;
   --fx-photo: 0px;
 }
 app-league-team-roster .scorer__image,
@@ -839,7 +843,7 @@ app-league-livescoring[data-fx-compact] ultimate-table .scorer__image {
 /* Team tabs: the player block sticks to the left and one row holds player + stats (Opp is a normal column).
    Fantrax overlays the player block on top of a padded stats row; here it is a sticky column instead. */
 app-league-livescoring ultimate-table {
-  --fx-player-w: 178px;
+  --fx-player-w: 154px;
   --fx-row-h: 60px;
   --fx-stat-size: 1.5rem; /* font size of the stat values on the matchup team tabs (same as the Players page) */
   --fx-stat-pad: 4px; /* left/right padding of every stat column, the same as the roster and Players tables */
@@ -960,6 +964,19 @@ app-league-livescoring ultimate-table > section > aside._ut__aside > td[data-fx-
   font-size: 1.3rem;
   font-weight: 600;
   text-align: center;
+}
+/* Stats scrolled sideways: tighter player block (number, padding, name) so most names still fit in the narrower column */
+app-league-livescoring[data-fx-compact] ultimate-table > section > aside._ut__aside > td {
+  padding: 0 4px 0 6px !important;
+}
+app-league-livescoring[data-fx-compact] ultimate-table > section > aside._ut__aside > td[data-fx-idx]::before {
+  width: 1.4rem;
+  margin-right: 2px;
+  font-size: 1.2rem;
+}
+app-league-livescoring[data-fx-compact] ultimate-table > section > aside .scorer__info__name,
+app-league-livescoring[data-fx-compact] ultimate-table > section > aside .scorer__info__name a {
+  font-size: 1.1rem;
 }
 /* Week range: active + bench players as one table (duplicates and the part totals are hidden) */
 .fx-merged ultimate-table [data-fx-dup],
@@ -3262,6 +3279,7 @@ body.theme--dark .fx-an__sim button {
 }
 .fx-an__cathead {
   padding: 1px 0;
+  text-align: center;
   border: 0;
   border-bottom: 3px solid transparent;
   background: transparent;
@@ -3269,12 +3287,6 @@ body.theme--dark .fx-an__sim button {
   font-family: var(--fx-num-font);
   font-size: 1.1rem;
   font-weight: 700;
-}
-/* A target category has a blue-tinted header */
-.fx-an__cathead.is-target {
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--fx-navy) 16%, transparent);
-  color: var(--fx-ink);
 }
 /* No colour fills: a navy line on the outer edge of the side that wins the category (above mine, below theirs),
    nothing when it is close */
@@ -3393,6 +3405,11 @@ body.theme--dark .fx-an__changes .is-down {
   align-items: center;
   gap: 6px;
   padding: 0 16px;
+}
+.fx-an__optlabel {
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 .fx-an__chips {
   display: flex;
@@ -3641,6 +3658,57 @@ body.theme--dark .fx-an__inj[data-status="Q"] {
   color: var(--fx-muted);
   font-size: 1rem;
   font-weight: 600;
+}
+.fx-an__sched b {
+  color: var(--fx-ink);
+  font-size: 1.8rem;
+}
+/* What the move adds to the week, e.g. "REB +10 · AST +2" */
+.fx-an__line3 {
+  padding-left: 36px;
+}
+.fx-an__line3 .fx-an__changes {
+  font-size: 1.2rem;
+}
+/* Stats window and what the list maximises: two pills that open the phone's picker */
+.fx-an__picks {
+  flex-wrap: nowrap;
+}
+.fx-an__pick {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 8px 0 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--fx-chip, #eceef1);
+  box-shadow: inset 0 0 0 2px var(--fx-navy);
+}
+.fx-an__pick:last-child {
+  flex-grow: 1.4;
+}
+.fx-an__pick small {
+  flex: none;
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fx-an__pick select {
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--fx-ink);
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  appearance: auto;
 }
 .fx-an__when {
   display: flex;

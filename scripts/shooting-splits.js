@@ -3,6 +3,7 @@
 //  - Team tables: extra "FGM/FGA" and "FTM/FTA" columns right before FG% and FT%.
 //  - Team tables, week range: a "GP/WG" column (games played / games on the schedule this week) in place of
 //    Fantrax's GP column, which is always empty there; the Day range has no GP column at all.
+//  - Team tables, both ranges: a "MIN" column (minutes, from the same roster data) after it.
 // FGM/FGA/FTM/FTA come from getTeamRosterInfo ("Standard" stats) with timeframe BY_PERIOD, where "period" is a
 // single day (1 = first day of the season): that day's own stat line, not the year-to-date average the default
 // timeframe returns. Day view = one such day, Week view = the sum of the matchup period's days.
@@ -350,21 +351,46 @@
   // games played / games on the schedule this week
   const GAMES_COL = { made: 'GPWG', title: 'GP/WG' };
 
-  const syncGames = (ut, head, labels, trs, asides, byId, keep, week) => {
+  // Minutes (whole, summed over the days of the range) go right after it in both ranges
+  const MINUTES_COL = { made: 'MIN', title: 'MIN' };
+
+  // Our cells are inserted right before Fantrax's GP cell, so a cell created later would land after an older one
+  const placeBefore = (first, second) => {
+    if (first && second && first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_PRECEDING) second.before(first);
+  };
+
+  const syncGames = (ut, head, labels, trs, asides, byId, keep, week, totalRow) => {
     const idx = labels.findIndex((th) => th.textContent.trim() === 'GP');
     if (idx < 0) return;
     labels[idx].setAttribute('data-fx-off', '');
     trs.forEach((tr) => real(tr)[idx]?.setAttribute('data-fx-off', ''));
-    if (!week) return;
-    const th = ensureCell(head, idx + 1, GAMES_COL, 'th', undefined, keep);
-    if (th) setText(th, GAMES_COL.title);
+    const headCells = {};
+    if (week) {
+      headCells.games = ensureCell(head, idx + 1, GAMES_COL, 'th', undefined, keep);
+      if (headCells.games) setText(headCells.games, GAMES_COL.title);
+    }
+    headCells.minutes = ensureCell(head, idx + 1, MINUTES_COL, 'th', undefined, keep);
+    if (headCells.minutes) setText(headCells.minutes, MINUTES_COL.title);
+    placeBefore(headCells.games, headCells.minutes);
+
     trs.forEach((tr, i) => {
-      const cell = ensureCell(tr, idx, GAMES_COL, 'td', real(tr)[idx]?.className, keep);
-      if (!cell) return;
+      const className = real(tr)[idx]?.className;
       const row = byId.get(scorerIdOf(asides[i]));
-      const text = row ? `${row.stats.GP}/${row.games}` : '';
-      setText(cell, text);
-      if (cell.hasAttribute('data-empty') !== (text === '')) cell.toggleAttribute('data-empty', text === '');
+      const cells = {};
+      const show = (cell, text, empty) => {
+        setText(cell, text);
+        if (cell.hasAttribute('data-empty') !== (text === empty)) cell.toggleAttribute('data-empty', text === empty);
+      };
+      if (week) {
+        cells.games = ensureCell(tr, idx, GAMES_COL, 'td', className, keep);
+        if (cells.games) show(cells.games, row ? `${row.stats.GP}/${row.games}` : '', '');
+      }
+      cells.minutes = ensureCell(tr, idx, MINUTES_COL, 'td', className, keep);
+      if (cells.minutes) {
+        const minutes = /^totals$/i.test(asides[i]?.textContent.trim() ?? '') ? totalRow(MINUTES_COL.made) : row?.stats.MIN;
+        show(cells.minutes, minutes > 0 ? String(Math.round(minutes)) : '-', '-');
+      }
+      placeBefore(cells.games, cells.minutes);
     });
   };
 
@@ -407,7 +433,7 @@
         if (cell.hasAttribute('data-empty') !== (text === '-')) cell.toggleAttribute('data-empty', text === '-');
       });
     }
-    syncGames(ut, head, labels, trs, asides, byId, keep, week);
+    syncGames(ut, head, labels, trs, asides, byId, keep, week, (key) => (rows ? total(listed, key) : 0));
 
     for (const el of ut.querySelectorAll(`.${COL}`)) if (!keep.has(el)) el.remove();
     alignColumns(head, trs, ut.classList.contains('scoring-table-detailed__away') ? 'away' : 'home', bench);

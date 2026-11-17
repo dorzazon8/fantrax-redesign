@@ -2,11 +2,13 @@
 //  1. A day strip (days stay pinned while scrolling): games per day for my team and my opponent
 //     and how many of my slots stay open that day. The claims left this week stay pinned with the days.
 //  2. A category outlook for the week (stats so far + the remaining games' per-game averages, as in the Matchups tab).
-//     The categories I am losing or that are close are the targets that free agents are rated on.
+//     The categories I am losing or that are close are the targets that free agents are rated on, unless I pick my own in the filters.
 //  3. Tap days to list the free agents who fit one of my open slots on them (when none is open: who plays). Each one
-//     shows how many games he adds from that day to the end of the week (one claim = that many games), his schedule,
-//     injury, ownership, stats and impact on the target categories (rated against my own roster). Sort, filter and a
-//     stat window (season / last 14 / last 7 days) narrow the list.
+//     shows how many games he adds from that day to the end of the week (one claim = that many games), his games in the
+//     next 4 days, his schedule, injury, ownership (and its trend) and what the move adds to my week's projected stats
+//     (e.g. REB +10 · AST +2, the dropped player's stats subtracted). Two pickers set the stat window (season / last 14 /
+//     last 7 days) and what the list maximises: by default the best schedule over the next 4 days, then net games, then
+//     the players being picked up the most (trending); or net games, categories won, trending, rank, or a category.
 //  4. "Test" on a free agent simulates adding him with no drop, or swapping him for one of my players (best first):
 //     the day strip and the outlook then show that roster until reset. Nothing is sent to Fantrax.
 //  5. Drop candidates: my players with the fewest games left and the least to give.
@@ -34,8 +36,18 @@
   const SPLIT = { 'FG%': ['FGM', 'FGA'], 'FT%': ['FTM', 'FTA'] };
   const STAT_KEYS = ['GP', 'MIN', 'FGM', 'FGA', 'FTM', 'FTA', '3PTM', 'REB', 'AST', 'ST', 'BLK', 'TO', 'PTS'];
   const SUM_KEYS = STAT_KEYS.filter((k) => k !== 'GP' && k !== 'MIN');
-  const WINDOWS = [['YTD', 'Season'], ['14', '14d'], ['7', '7d']];
-  const SORTS = [['net', 'Net games'], ['games', 'Games'], ['impact', 'Impact'], ['rank', 'Rank'], ...CATS.map((c) => [c, c])];
+  const TOP_CHANGES = 4; // stat changes shown on a free agent's card (the biggest ones)
+  const HORIZON = 4; // days ahead whose games make up a free agent's schedule rating
+  const WINDOWS = [['YTD', 'Season'], ['14', 'Last 14 days'], ['7', 'Last 7 days']];
+  // What the list is ordered by (the "maximise" choice); a category sorts by the stat the move adds to my week
+  const SORTS = [
+    ['sched', 'Best schedule'],
+    ['net', 'Net games'],
+    ['cats', 'Categories won'],
+    ['trend', 'Trending (% owned)'],
+    ['rank', 'Rank'],
+    ...CATS.map((c) => [c, c === 'TO' ? 'Fewer TO' : `More ${c}`]),
+  ];
   const TOPS = [0, 100, 200, 300];
   const UTIL = '307';
 
@@ -46,9 +58,9 @@
     at: 0,
     sel: new Set(),
     mode: 'any', // several days chosen: a free agent plays on any of them / on all of them
-    win: 'YTD', // stat window of the free agents
+    win: '7', // stat window of the free agents: streaming is short-term, so the last 7 days by default
     next: false, // also show the first days of next week
-    sort: 'net',
+    sort: 'sched',
     pos: '',
     noInj: false,
     faOnly: false,
@@ -407,10 +419,17 @@
     return { sel, week: data.days.filter((d) => d.n >= from).slice(0, 10), after: state.next ? data.after.slice(0, AHEAD) : [] };
   };
 
+  // The next HORIZON days from the first chosen day, into next week when the matchup week ends before
+  const horizonDays = () => {
+    const { data } = state;
+    const from = [...state.sel].sort((a, b) => a - b)[0] ?? data.today;
+    return [...data.days, ...data.after].filter((d) => d.n >= from).slice(0, HORIZON);
+  };
+
   const fetchSelected = () => {
     if (!state.data) return;
     const { sel, week, after } = windowInfo();
-    const dates = new Set([...sel.map((n) => dayOfN(n)?.date), ...week.map((d) => d.date), ...after.map((d) => d.date)].filter(Boolean));
+    const dates = new Set([...sel.map((n) => dayOfN(n)?.date), ...week.map((d) => d.date), ...after.map((d) => d.date), ...horizonDays().map((d) => d.date)].filter(Boolean));
     const wants = [...dates].map((date) => ['YTD', date]);
     if (state.win !== 'YTD' && state.data.byDate) for (const n of sel) wants.push([state.win, dayOfN(n).date]);
     fetchPools(wants);
@@ -539,7 +558,8 @@
     const withOpen = chosen.filter((d) => d.me.open.length);
     const swap = withOpen.length === 0;
     const needed = swap ? chosen : withOpen;
-    const pools = new Map([...week, ...after, ...needed].map((d) => [d.date, faCache.get(poolKey('YTD', d.date))]));
+    const horizon = horizonDays();
+    const pools = new Map([...week, ...after, ...needed, ...horizon].map((d) => [d.date, faCache.get(poolKey('YTD', d.date))]));
     if ([...pools.values()].some((p) => !p?.rows)) return null;
     const ids = new Set();
     for (const d of needed) for (const id of pools.get(d.date).byId.keys()) ids.add(id);
@@ -570,6 +590,11 @@
       };
       const pips = [...week.map((d) => pip(d, false)), ...after.map((d) => pip(d, true))];
       const gained = pips.filter((p) => p.fit).length;
+      // Schedule rating: his games (injuries and games already started left out) over the next HORIZON days
+      const games4 = horizon.filter((d) => {
+        const game = availGame(pools.get(d.date), pools.get(d.date).byId.get(id), d.date);
+        return Boolean(game) && !(d.kind === 'today' && gameStarted(game));
+      }).length;
       const sameDay = alt.find((p) => p.byId.has(id));
       const line = sameDay ? poolLine(sameDay, sameDay.byId.get(id)) : poolLine(pool, row);
       const z = zOf(norm, line);
@@ -582,6 +607,8 @@
         scorer,
         pips,
         gained,
+        games4,
+        horizon: horizon.length,
         line,
         z,
         impact: gained * week7,
@@ -607,21 +634,37 @@
       !(state.minMin && (c.line.MIN ?? 0) < state.minMin) &&
       (!name || c.scorer.name.toLowerCase().includes(name));
     const rank = (c) => c.scorer.rank ?? 1e9;
-    const by = {
-      games: (a, b) => b.gained - a.gained || rank(a) - rank(b),
-      impact: (a, b) => b.impact - a.impact || rank(a) - rank(b),
-      rank: (a, b) => rank(a) - rank(b),
-    };
+    const trend = (c) => c.trend ?? 0;
     const kept = list.filter(ok);
-    if (state.sort === 'net') {
-      // The simulation behind "net games" is run for the players with the most games; the rest follow
-      kept.sort(by.games);
+    // The move's simulation (net games, stat changes) is run for the front of a cheap pre-order; the rest follow it
+    const planned = (pre) => {
+      kept.sort(pre);
       for (const c of kept.slice(0, PLANNED)) planFor(c);
-      const net = (c) => (c.plan ? c.plan.net : -1e6);
-      return kept.sort((a, b) => net(b) - net(a) || (b.plan?.cats ?? 0) - (a.plan?.cats ?? 0) || by.games(a, b));
+    };
+    const net = (c) => (c.plan ? c.plan.net : -1e6);
+    const sort = state.sort;
+    if (sort === 'sched') {
+      // most games in the next days first, then net games, then who is being picked up the most
+      planned((a, b) => b.games4 - a.games4 || b.gained - a.gained || trend(b) - trend(a) || rank(a) - rank(b));
+      return kept.sort((a, b) => b.games4 - a.games4 || net(b) - net(a) || trend(b) - trend(a) || rank(a) - rank(b));
     }
-    const order = by[state.sort] ?? ((a, b) => b.z[state.sort] - a.z[state.sort] || rank(a) - rank(b));
-    return kept.sort(order);
+    if (sort === 'net') {
+      planned((a, b) => b.gained - a.gained || rank(a) - rank(b));
+      return kept.sort((a, b) => net(b) - net(a) || (b.plan?.cats ?? 0) - (a.plan?.cats ?? 0) || trend(b) - trend(a) || rank(a) - rank(b));
+    }
+    if (sort === 'cats') {
+      planned((a, b) => b.impact - a.impact || rank(a) - rank(b));
+      return kept.sort((a, b) => (b.plan ? b.plan.cats : -1e6) - (a.plan ? a.plan.cats : -1e6) || net(b) - net(a) || rank(a) - rank(b));
+    }
+    if (sort === 'trend') return kept.sort((a, b) => trend(b) - trend(a) || b.games4 - a.games4 || rank(a) - rank(b));
+    if (sort === 'rank') return kept.sort((a, b) => rank(a) - rank(b));
+    // A category: what the move adds to my week's total of it (fewer is better for TO)
+    const added = (c) => {
+      const x = c.plan?.deltas.find((d) => d.c === sort);
+      return x ? (sort === 'TO' ? -x.d / x.tol : x.d / x.tol) : -1e6;
+    };
+    planned((a, b) => b.gained * b.z[sort] - a.gained * a.z[sort] || rank(a) - rank(b));
+    return kept.sort((a, b) => added(b) - added(a) || net(b) - net(a) || rank(a) - rank(b));
   };
 
   // ---- View ----
@@ -742,8 +785,12 @@
 
   // The categories a move changes, in the usual category order, e.g. "FT% −0.5% · REB +12 · AST +3" (green when it
   // helps, red when it hurts); negligible changes are left out
-  const changesLine = (deltas) => {
-    const shown = deltas.filter((x) => Math.abs(x.d) / x.tol > 0.03);
+  const changesLine = (deltas, limit = Infinity) => {
+    const shown = deltas
+      .filter((x) => Math.abs(x.d) / x.tol > 0.03)
+      .sort((a, b) => Math.abs(b.d) / b.tol - Math.abs(a.d) / a.tol)
+      .slice(0, limit)
+      .sort((a, b) => CATS.indexOf(a.c) - CATS.indexOf(b.c));
     return h('div', { class: 'fx-an__changes' }, shown.length ? shown.map((x) => h('span', { class: x.good ? 'is-up' : 'is-down' }, `${x.c} ${fmtDelta(x.c, x.d)}`)) : 'no change in the categories');
   };
 
@@ -755,7 +802,7 @@
     const tone = (o, mine) => (o.state === 'close' ? 'close' : (o.state === 'win') === mine ? 'win' : 'lose');
     const row = (label, mine) => [
       h('div', { class: 'fx-an__catlabel' }, label),
-      ...outlook.map((o) => h('div', { class: `fx-an__catval${mine ? '' : ' is-opp'}${state.targets.has(o.c) ? ' is-target' : ''}`, 'data-s': tone(o, mine) }, fmtCat(o.c, mine ? o.me : o.opp))),
+      ...outlook.map((o) => h('div', { class: `fx-an__catval${mine ? '' : ' is-opp'}`, 'data-s': tone(o, mine) }, fmtCat(o.c, mine ? o.me : o.opp))),
     ];
     return h(
       'div',
@@ -764,17 +811,17 @@
         'div',
         { class: 'fx-an__cattable', style: `--n:${outlook.length}` },
         h('span', { class: 'fx-an__catlabel' }),
-        outlook.map((o) => h('button', { type: 'button', class: `fx-an__cathead${state.targets.has(o.c) ? ' is-target' : ''}`, 'aria-pressed': String(state.targets.has(o.c)), onclick: () => toggleTarget(o.c) }, o.c)),
+        outlook.map((o) => h('div', { class: 'fx-an__cathead' }, o.c)),
         row('Me', true),
         row(names[opp] ?? 'Opp', false),
-        deltas && [h('div', { class: 'fx-an__catlabel' }, 'Change'), ...deltas.map((x) => h('div', { class: `fx-an__catchange${state.targets.has(x.c) ? ' is-target' : ''} ${Math.abs(x.d) / x.tol < 0.03 ? '' : x.good ? 'is-up' : 'is-down'}` }, fmtDelta(x.c, x.d)))],
+        deltas && [h('div', { class: 'fx-an__catlabel' }, 'Change'), ...deltas.map((x) => h('div', { class: `fx-an__catchange ${Math.abs(x.d) / x.tol < 0.03 ? '' : x.good ? 'is-up' : 'is-down'}` }, fmtDelta(x.c, x.d)))],
       ),
     );
   };
 
   const outlookView = (data) => {
     if (!data.outlook.length) return null;
-    return h('section', { class: 'fx-an__cats' }, h('h3', null, state.sim ? 'Simulated week' : 'Projected week', h('span', null, 'tap a category to target it')), catGrid(data.outlook, state.sim ? deltasOf(data) : null));
+    return h('section', { class: 'fx-an__cats' }, h('h3', null, state.sim ? 'Simulated week' : 'Projected week'), catGrid(data.outlook, state.sim ? deltasOf(data) : null));
   };
 
   const chipRow = (items, active, pick, label, wrap) =>
@@ -786,21 +833,34 @@
 
   const toggle = (text, on, fn) => h('button', { type: 'button', class: 'fx-an__tog', 'aria-pressed': String(on), onclick: fn }, text);
 
-  const filterCount = () => [state.pos, state.noInj, state.faOnly, state.top, state.q.trim()].filter(Boolean).length;
+  // A pill that shows its caption and the current choice and opens the phone's own picker
+  const picker = (caption, items, active, pick) =>
+    h(
+      'label',
+      { class: 'fx-an__pick' },
+      h('small', null, caption),
+      h(
+        'select',
+        { 'aria-label': caption, onchange: (e) => pick(e.target.value) },
+        items.map(([k, text, off]) => h('option', { value: k, selected: active === k, disabled: off }, text)),
+      ),
+    );
+
+  const filterCount = () => [state.pos, state.noInj, state.faOnly, state.top, state.q.trim(), state.manual].filter(Boolean).length;
 
   const controls = (multi) => {
     const kids = [
       h(
         'div',
-        { class: 'fx-an__opts' },
-        multi && chipRow([['any', 'Any'], ['all', 'All']], state.mode, (v) => ((state.mode = v), (state.k = STEP), render()), 'Free agent plays on any / all chosen days', true),
-        chipRow(WINDOWS.map(([k, t]) => [k, t, k !== 'YTD' && !state.data.byDate]), state.win, (v) => ((state.win = v), fetchSelected(), render()), 'Stat window', true),
-        toggle('+ Next week', state.next, () => ((state.next = !state.next), fetchSelected(), render())),
+        { class: 'fx-an__opts fx-an__picks' },
+        picker('Stats', WINDOWS.map(([k, t]) => [k, t, k !== 'YTD' && !state.data.byDate]), state.win, (v) => ((state.win = v), fetchSelected(), render())),
+        picker('Maximise', SORTS, state.sort, (v) => ((state.sort = v), (state.k = STEP), render())),
       ),
-      chipRow(SORTS, state.sort, (v) => ((state.sort = v), (state.k = STEP), render()), 'Sort by'),
       h(
         'div',
         { class: 'fx-an__opts' },
+        multi && chipRow([['any', 'Any'], ['all', 'All']], state.mode, (v) => ((state.mode = v), (state.k = STEP), render()), 'Free agent plays on any / all chosen days', true),
+        toggle('+ Next week', state.next, () => ((state.next = !state.next), fetchSelected(), render())),
         toggle(`${MIN_MINUTES}+ min`, state.minMin > 0, () => ((state.minMin = state.minMin ? 0 : MIN_MINUTES), (state.k = STEP), render())),
         toggle(`Filters${filterCount() ? ` · ${filterCount()}` : ''}`, state.filters, () => ((state.filters = !state.filters), render())),
       ),
@@ -808,6 +868,13 @@
     if (state.filters) {
       kids.push(
         chipRow([['', 'All'], ...POSITIONS.map((p) => [p, p])], state.pos, (v) => ((state.pos = v), (state.k = STEP), render()), 'Position'),
+        h(
+          'div',
+          { class: 'fx-an__opts', role: 'group', 'aria-label': 'Target categories' },
+          h('small', { class: 'fx-an__optlabel' }, 'Target'),
+          CATS.map((c) => toggle(c, state.targets.has(c), () => toggleTarget(c))),
+          toggle('Auto', !state.manual, resetTargets),
+        ),
         h(
           'div',
           { class: 'fx-an__opts' },
@@ -945,7 +1012,7 @@
   };
 
   // Two lines: who he is and what adding him nets me (games, expected categories), then his schedule and who goes.
-  // Tap for the rest: game times, stats, impact and the add / drop tests.
+  // Tap for the rest: game times, stats and the add / drop tests.
   const card = (c, swap, claimsLeft) => {
     const sc = c.scorer;
     const plan = planFor(c);
@@ -994,9 +1061,10 @@
           ),
         ),
         h('div', { class: 'fx-an__gain', title: 'Net games: games he adds from the chosen day on, minus the games of the player dropped for him' }, h('b', null, signed(net)), h('small', null, 'net games')),
-        plan && state.data.outlook.length > 0 && h('div', { class: 'fx-an__gain fx-an__delta', title: 'Change in expected categories won' }, h('b', { class: plan.cats > 0.05 ? 'is-up' : plan.cats < -0.05 ? 'is-down' : '' }, signed(plan.cats, 1)), h('small', null, 'cats')),
+        h('div', { class: 'fx-an__gain fx-an__sched', title: `Games he plays in the next ${c.horizon} days` }, h('b', null, `${c.games4}/${c.horizon}`), h('small', null, 'next days')),
       ),
       h('div', { class: 'fx-an__line2' }, pipsView(c), h('span', null, plan?.drop ? `drop ${plan.dropName}` : 'add only'), h('i', { class: 'fx-an__chev' }, open ? '▴' : '▾')),
+      plan && state.data.outlook.length > 0 && h('div', { class: 'fx-an__line3', title: "What this move adds to my week's projected totals" }, changesLine(plan.deltas, TOP_CHANGES)),
       open &&
         h(
           'div',
@@ -1006,7 +1074,6 @@
           h(
             'div',
             { class: 'fx-an__foot' },
-            h('span', { title: 'Games added × how much he gives in the target categories' }, 'Impact ', h('b', { class: c.impact > 0 ? 'is-up' : c.impact < 0 ? 'is-down' : '' }, signed(c.impact, 1))),
             c.helps.length > 0 && h('span', null, 'helps ', h('b', null, c.helps.join(' · '))),
             meta && h('span', null, meta),
           ),
@@ -1112,9 +1179,20 @@
     render();
   };
 
+  // The categories I am losing or that are close, until I pick my own in the filters
+  const autoTargets = () => new Set(state.data.outlook.filter((o) => o.state !== 'win').map((o) => o.c));
+
   const toggleTarget = (c) => {
     state.manual = true;
     if (!state.targets.delete(c)) state.targets.add(c);
+    state.k = STEP;
+    render();
+  };
+
+  const resetTargets = () => {
+    state.manual = false;
+    state.targets = autoTargets();
+    state.k = STEP;
     render();
   };
 
@@ -1130,7 +1208,7 @@
       const valid = state.data.days.filter((d) => d.kind !== 'past').map((d) => d.n);
       state.sel = new Set([...state.sel].filter((n) => valid.includes(n)));
       if (!state.sel.size && valid.length) state.sel.add(valid[0]);
-      if (!state.manual) state.targets = new Set(state.data.outlook.filter((o) => o.state !== 'win').map((o) => o.c));
+      if (!state.manual) state.targets = autoTargets();
       state.sim = null;
       state.simFor = null;
       state.viewMemo = null;

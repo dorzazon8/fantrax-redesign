@@ -51,7 +51,8 @@
   const root = () => document.querySelector(ROOT);
   const tab = (name) => [...document.querySelectorAll(`${ROOT} .tabs__item`)].find((b) => b.textContent.trim() === name);
   const isSummary = () => tab('Summary')?.classList.contains('tabs__item--selected') ?? false;
-  const stackedIcon = () => document.querySelectorAll(`${ROOT} .tab-icon`)[2];
+  // Fantrax sometimes adds a matchup-preview button to the icons, so the stacked layout is found by its icon, not its position
+  const stackedIcon = () => [...document.querySelectorAll(`${ROOT} .tab-icon`)].find((i) => i.textContent.trim() === 'view_stream');
 
   // Timeframes pills: [0] daily, [1] period, [2] unused
   const frames = () => [...document.querySelectorAll(`${ROOT} .livescoring-mobile-filters pill-group[aria-label="Timeframes"] button`)];
