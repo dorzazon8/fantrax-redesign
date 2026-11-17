@@ -500,7 +500,7 @@
     const root = document.querySelector('app-league-livescoring');
     if (root && root.classList.contains('fx-loading') !== loading) root.classList.toggle('fx-loading', loading);
 
-    const tables = [...document.querySelectorAll('ultimate-table.scoring-table-detailed__home, ultimate-table.scoring-table-detailed__away')];
+    const tables = [...document.querySelectorAll('ultimate-table.scoring-table-detailed__home:not([data-fx-clone]), ultimate-table.scoring-table-detailed__away:not([data-fx-clone])')];
     for (const ut of tables) {
       const side = ut.classList.contains('scoring-table-detailed__home') ? 0 : 1;
       syncTable(ut, fr && cache.get(`${ids[side]}|${fr.key}`), ut.classList.contains('scoring-table-detailed__last'), !!fr?.days);

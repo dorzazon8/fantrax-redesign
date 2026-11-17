@@ -40,13 +40,43 @@
     true,
   );
 
+  // Week range: the merged table has no part totals, so the active table's Totals row (the games that count for the
+  // matchup, the same numbers as the Summary tab) is copied into a one-row table under the last table
+  const CLONE = 'data-fx-clone';
+
+  const syncWeekTotals = (root, side, tables, merged) => {
+    const existing = root.querySelector(`ultimate-table.scoring-table-detailed__${side}[${CLONE}]`);
+    const source = tables[0];
+    const asides = source ? [...source.querySelectorAll('aside._ut__aside > td')] : [];
+    const at = asides.findIndex((a) => /^totals$/i.test(a.textContent.trim()));
+    const row = source?.querySelectorAll('._ut__content tr')[at];
+    if (!merged || !row) {
+      existing?.remove();
+      return;
+    }
+    const anchor = tables[tables.length - 1];
+    const signature = `${row.textContent.replace(/\s+/g, ' ')}|${row.children.length}`;
+    if (existing && existing.dataset.fxSig === signature && existing.previousElementSibling === anchor) return;
+    existing?.remove();
+    const copy = source.cloneNode(true);
+    copy.setAttribute(CLONE, '');
+    copy.dataset.fxSig = signature;
+    copy.classList.add('scoring-table-detailed__last');
+    copy.querySelectorAll('aside._ut__aside > td').forEach((td, i) => i !== at && td.remove());
+    copy.querySelectorAll('._ut__content tr').forEach((tr, i) => i !== at && tr.remove());
+    anchor.after(copy);
+    const scrolled = source.querySelector(':scope > section')?.scrollLeft ?? 0;
+    const section = copy.querySelector(':scope > section');
+    if (section) section.scrollLeft = scrolled;
+  };
+
   const syncTeamTables = () => {
     const root = document.querySelector('app-league-livescoring');
     if (!root) return;
     const merged = root.classList.contains('fx-merged');
     for (const side of ['home', 'away']) {
       // [active table, bench table]; in the merged view they count as one table
-      const tables = [...root.querySelectorAll(`ultimate-table.scoring-table-detailed__${side}`)];
+      const tables = [...root.querySelectorAll(`ultimate-table.scoring-table-detailed__${side}:not([${CLONE}])`)];
       const activeIds = new Set();
       let n = 0;
       tables.forEach((ut, t) => {
@@ -75,6 +105,7 @@
         const section = ut.querySelector(':scope > section');
         if (section) setStyle(ut, '--fx-max', `${Math.max(0, section.scrollWidth - section.clientWidth)}px`);
       }
+      syncWeekTotals(root, side, tables, merged);
       const first = tables[0]?.querySelector(':scope > section');
       if (first) alignScroll(first);
     }
