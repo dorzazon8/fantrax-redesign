@@ -3998,3 +3998,18 @@ body.theme--dark .nav-mobile-menu__bar[data-fx-slide] .nav-mobile-menu__button.c
 body.fx-analyzer-open .nav-mobile-menu__button.current:not(.fx-analyzer-btn) b {
   font-weight: 600;
 }
+
+/* No ads: Fantrax's banner slots (and the "Hide Ads" upsell inside them) and the ad networks' own containers */
+top-ad,
+bottom-ad,
+iframe[id^="google_ads"],
+[id^="div-gpt-ad"],
+[id^="fantrax_mobile_"],
+[id^="fs-sticky"],
+.adsbygoogle {
+  display: none !important;
+}
+/* Week range: the opponent column of the merged table adds nothing (cells tagged by scripts/matchup-columns.js) */
+.fx-merged ultimate-table [data-fx-opp] {
+  display: none !important;
+}

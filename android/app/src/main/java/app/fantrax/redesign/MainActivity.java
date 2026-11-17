@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -14,6 +15,7 @@ import android.webkit.WebViewClient;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
+import java.io.ByteArrayInputStream;
 import java.util.Collections;
 
 public class MainActivity extends Activity {
@@ -22,6 +24,13 @@ public class MainActivity extends Activity {
     // Hosts kept inside the app (site + social login); everything else opens in the system browser.
     private static final String[] IN_APP_HOSTS = {
         "fantrax.com", "google.com", "gstatic.com", "apple.com", "facebook.com"
+    };
+
+    // Ad networks Fantrax loads; their requests are answered with nothing (the ad slots are hidden by the CSS).
+    private static final String[] AD_HOSTS = {
+        "doubleclick.net", "googlesyndication.com", "googleadservices.com", "adservice.google.com",
+        "fundingchoicesmessages.google.com", "pub.network", "freestar.com", "fsrv.io", "hadronid.net",
+        "amazon-adsystem.com"
     };
 
     private WebView webView;
@@ -59,6 +68,14 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (isAd(request.getUrl())) {
+                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 if (isInApp(uri)) return false;
@@ -94,6 +111,15 @@ public class MainActivity extends Activity {
             + "function run(){\n" + userscript + "\n}"
             + "if(document.readyState==='loading')"
             + "document.addEventListener('DOMContentLoaded',run);else run();})();";
+    }
+
+    private static boolean isAd(Uri uri) {
+        String host = uri.getHost();
+        if (host == null) return false;
+        for (String h : AD_HOSTS) {
+            if (host.equals(h) || host.endsWith("." + h)) return true;
+        }
+        return false;
     }
 
     private static boolean isInApp(Uri uri) {

@@ -25,7 +25,8 @@
     for (const ut of document.querySelectorAll('app-league-livescoring ultimate-table')) {
       const head = [...(ut.querySelector(':scope > header tr._ut__head')?.children ?? [])];
       if (head.length < 2) continue;
-      const kinds = head.slice(1).map((th) => kindOf(th.textContent.trim()));
+      const labels = head.slice(1).map((th) => th.textContent.trim());
+      const kinds = labels.map(kindOf);
       head.slice(1).forEach((th, i) => tag(th, kinds[i]));
       // The body table's own (invisible) thead sets its column widths, so it is tagged like a row
       // (and must hide the same columns, or it adds a phantom column)
@@ -38,6 +39,14 @@
         [...row.children].forEach((td, i) => {
           if (i < kinds.length) tag(td, kinds[i]);
         });
+      }
+      // Header and body cells of the Opp column, for the CSS to hide in the Week range
+      const opp = labels.indexOf('Opp');
+      if (opp >= 0) {
+        const headRow = head[0].parentElement;
+        for (const row of [headRow, ...ut.querySelectorAll('._ut__content thead, ._ut__content tr')]) {
+          [...row.children].forEach((td, i) => td.toggleAttribute('data-fx-opp', i === (row === headRow ? opp + 1 : opp)));
+        }
       }
     }
   };
