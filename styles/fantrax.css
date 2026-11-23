@@ -411,6 +411,9 @@ app-league-livescoring .livescoring-mobile-filters {
 .livescoring-mobile-filters.fx-week .mat-mdc-form-field-icon-suffix > button {
   visibility: hidden;
 }
+.livescoring-mobile-filters.fx-week.fx-summary .mat-mdc-form-field-icon-suffix > button {
+  visibility: visible;
+}
 
 /* Summary: no Day | Week switch, so Projected shares the period row: toggle on the left, period in the space left */
 app-league-livescoring .livescoring-mobile-filters.fx-summary {
@@ -1143,6 +1146,16 @@ nav-mobile-menu.nav-mobile-menu::before {
   z-index: -1;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 55%);
   pointer-events: none;
+}
+nav-mobile-menu.nav-mobile-menu--open {
+  overflow: visible;
+  transform: none;
+  -webkit-transform: none;
+  will-change: auto;
+}
+nav-mobile-menu.nav-mobile-menu--open > .nav-mobile__backdrop,
+nav-mobile-menu.nav-mobile-menu--open > nav-mobile-popup {
+  pointer-events: auto;
 }
 fx-nav {
   box-shadow: none !important;
@@ -2993,6 +3006,18 @@ body.fx-analyzer-open.theme--dark .nav-mobile-menu__button.current:not(.fx-analy
   color: var(--fx-muted);
   font-size: 1.2rem;
   font-weight: 500;
+}
+.fx-an__week {
+  flex: none;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--fx-zebra);
+  color: var(--fx-ink);
+  font: inherit;
+}
+.fx-an__week:disabled {
+  opacity: 0.5;
 }
 /* Claims left this week, pinned in the corner of the day bar: each add uses one */
 .fx-an__claims {

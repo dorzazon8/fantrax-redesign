@@ -1,4 +1,4 @@
-// Match analyzer: an "Analyzer" button in the bottom nav opens a full-screen page for this week's matchup.
+// Match analyzer: an "Analyzer" button in the bottom nav opens a full-screen page for the current or next matchup.
 //  1. A day strip (days stay pinned while scrolling): games per day for my team and my opponent
 //     and how many of my slots stay open that day. The claims left this week stay pinned with the days.
 //  2. A category outlook for the week (stats so far + the remaining games' per-game averages, as in the Matchups tab).
@@ -55,6 +55,7 @@
     loading: false,
     error: null,
     data: null,
+    weekDate: null, // null = current matchup; otherwise a date in the selected next matchup
     at: 0,
     sel: new Set(),
     mode: 'any', // several days chosen: a free agent plays on any of them / on all of them
@@ -228,10 +229,10 @@
   // ---- Loading the week ----
 
   // Fetches everything the week needs; build() turns it into the figures (and again for a simulated roster move)
-  const load = async () => {
+  const load = async (weekDate) => {
     const [cur] = await call([{ method: 'getTeamRosterInfo', data: {} }]);
     const me = cur?.displayedSelections?.displayedFantasyTeamId;
-    const opp = cur?.periodOppnentTeamIds?.[0];
+    let opp = cur?.periodOppnentTeamIds?.[0];
     const today = Number(cur?.displayedSelections?.displayedPeriod);
     const start = cur?.displayedSelections?.displayedStartDate;
     if (!me || !start || !today) throw new Error('no roster');
@@ -240,7 +241,7 @@
     const dayOf = (t) => Math.round((t - base) / DAY_MS) + 1;
     const names = Object.fromEntries((cur.fantasyTeams ?? []).map((t) => [t.id, t.shortName || t.name]));
     const left = cur?.miscData?.transactionInfo?.info?.find((i) => /^claims remaining/i.test(i.name))?.value;
-    const claims = Number.isFinite(left) ? { left, limit: Number(localStorage.getItem(`fxClaimLimit:${leagueId()}`)) || 0 } : null;
+    const claims = !weekDate && Number.isFinite(left) ? { left, limit: Number(localStorage.getItem(`fxClaimLimit:${leagueId()}`)) || 0 } : null;
     const totals = cur?.miscData?.statusTotals ?? [];
     const sum = (key) => totals.reduce((s, t) => s + (t[key] ?? 0), 0);
     const ir = totals.find((t) => t.id === '3');
@@ -251,14 +252,20 @@
 
     let first = today;
     let last = today + 6;
-    if (opp) {
+    if (opp || weekDate) {
       const [period] = await call([
         {
           method: 'getLiveScoringStats',
-          data: { mobileMatchupView: true, matchupId: `${me}_${opp}`, teamId: 'ALL', layout: 'DETAILED', mainView: 'MATCHUP', mobileView: 'MATCHUPS', newView: true, sppId: '-1', viewType: '2' },
+          data: { mobileMatchupView: true, matchupId: opp ? `${me}_${opp}` : me, teamId: 'ALL', layout: 'DETAILED', mainView: 'MATCHUP', mobileView: 'MATCHUPS', newView: true, sppId: '-1', viewType: '2', ...(weekDate && { date: weekDate }) },
         },
       ]);
       const bounds = periodBounds(period?.displayPeriod);
+      if (weekDate) {
+        const requested = Date.parse(`${weekDate}T00:00:00Z`);
+        if (!bounds || requested < bounds[0] || requested > bounds[1] || !Array.isArray(period.matchups)) throw new Error('Next matchup is unavailable');
+        const matchup = period.matchups.find((id) => id.split('_').includes(me));
+        opp = matchup?.split('_').find((id) => id !== me);
+      }
       if (bounds) [first, last] = [dayOf(bounds[0]), dayOf(bounds[1])];
     }
 
@@ -274,12 +281,12 @@
     for (const n of extra) msgs.push(roster(me, { period: String(n) }));
     // The day's own stats (live games included) are only in the period view, so today is asked for again that way
     const todayAt = msgs.length;
-    for (const t of teams) msgs.push(roster(t, byPeriod(today)));
+    if (first <= today && today <= last) for (const t of teams) msgs.push(roster(t, byPeriod(today)));
     const lastAt = msgs.length;
     if (previous) for (const t of teams) msgs.push(roster(t, { timeframeTypeCode: previous.timeframeTypeCode, seasonOrProjection: previous.code }));
     const res = await call(msgs);
 
-    return { me, opp, names, today, base, periods, teams, extra, res, todayAt, lastAt, previous: Boolean(previous), claims, spots, byDate: season ? season.replace('YEAR_TO_DATE', 'BY_DATE') : null, norm: null };
+    return { me, opp, names, today, base, periods, teams, extra, res, todayAt, lastAt, previous: Boolean(previous), claims, spots, nextWeek: Boolean(weekDate), byDate: season ? season.replace('YEAR_TO_DATE', 'BY_DATE') : null, norm: null };
   };
 
   // Expected categories won: each category counts by how clear the lead is (a lead of the "close" margin is ~85%)
@@ -322,17 +329,16 @@
     const prev = teams.map((_, i) => (previous ? linesById(res[lastAt + i]) : {}));
     const lineFor = (i, id, line) => ((line.GP ?? 0) >= MIN_GAMES || !(prev[i][id]?.GP > 0) ? line : prev[i][id]);
 
-    // The week so far (the games that counted) plus the games still to come at each player's average. My lineup is
-    // assumed set optimally; my opponent's is taken as it stands, like the Matchups tab does
+    // Both lineups maximize games next week; for the current week the opponent's lineup is as set.
     const totals = teams.map((_, i) => {
       const side = sides[i];
       const act = {};
       const rem = {};
       for (const day of days) {
         if (day.kind === 'past') addLine(act, day[side].actual);
-        else for (const p of side === 'me' ? day.me.placed : day.opp.actives) addLine(rem, lineFor(i, p.id, p.line));
+        else for (const p of side === 'me' || raw.nextWeek ? day[side].placed : day.opp.actives) addLine(rem, lineFor(i, p.id, p.line));
       }
-      addLine(act, analyse(res[todayAt + i], 'past').actual);
+      if (periods.includes(today)) addLine(act, analyse(res[todayAt + i], 'past').actual);
       const total = {};
       for (const k of SUM_KEYS) total[k] = (act[k] ?? 0) + (rem[k] ?? 0);
       return { act, total };
@@ -384,6 +390,7 @@
 
   // All the pools that are missing or stale go out in one request
   const fetchPools = async (wants) => {
+    const raw = state.raw;
     const need = wants.filter(([win, date]) => {
       const hit = faCache.get(poolKey(win, date));
       return !(hit && (hit.loading || Date.now() - hit.at < TTL_MS));
@@ -392,6 +399,7 @@
     for (const [win, date] of need) faCache.set(poolKey(win, date), { ...faCache.get(poolKey(win, date)), loading: true, at: faCache.get(poolKey(win, date))?.at ?? 0 });
     try {
       const res = await call(need.map(([win, date]) => ({ method: 'getPlayerStats', data: poolParams(win, date) })));
+      if (raw !== state.raw) return;
       need.forEach(([win, date], i) => {
         const rows = res[i]?.statsTable ?? [];
         const header = res[i]?.tableHeader?.cells ?? [];
@@ -404,6 +412,7 @@
         });
       });
     } catch {
+      if (raw !== state.raw) return;
       for (const [win, date] of need) faCache.set(poolKey(win, date), { at: Date.now(), rows: [], header: [], col: {}, byId: new Map(), failed: true });
     }
     render();
@@ -695,7 +704,10 @@
         h('h2', null, 'Analyzer'),
         h('button', { type: 'button', 'aria-label': 'Refresh', class: state.loading ? 'is-spin' : '', onclick: () => refresh(true) }, h('mat-icon', { class: 'material-icons' }, 'refresh')),
       ),
-      data && h('div', { class: 'fx-an__sub' }, h('span', null, `${range}${time ? ` · updated ${time}` : ''}`)),
+      data && h('div', { class: 'fx-an__sub' },
+        h('span', null, `${range}${time ? ` · updated ${time}` : ''}`),
+        h('button', { type: 'button', class: 'fx-an__week', disabled: state.loading, onclick: () => refresh(true, state.weekDate ? null : isoDay(data.base + data.days[data.days.length - 1].n * DAY_MS)) }, state.weekDate ? 'Current week' : 'Next week'),
+      ),
     ];
   };
 
@@ -821,7 +833,7 @@
 
   const outlookView = (data) => {
     if (!data.outlook.length) return null;
-    return h('section', { class: 'fx-an__cats' }, h('h3', null, state.sim ? 'Simulated week' : 'Projected week'), catGrid(data.outlook, state.sim ? deltasOf(data) : null));
+    return h('section', { class: 'fx-an__cats' }, h('h3', null, state.sim ? 'Simulated week' : 'Projected week', data.raw.nextWeek && h('span', null, 'Both lineups maximize games')), catGrid(data.outlook, state.sim ? deltasOf(data) : null));
   };
 
   const chipRow = (items, active, pick, label, wrap) =>
@@ -1157,7 +1169,7 @@
       body.push(stickyView(view), stripView(view), outlookView(view), dropView(), poolView(data));
     }
     if (loading && !data) body.push(skeleton(5));
-    if (error && !data) body.push(h('p', { class: 'fx-an__hint' }, 'Could not load the matchup. Tap refresh to try again.'));
+    if (error) body.push(h('p', { class: 'fx-an__hint', role: 'alert' }, 'Could not load the matchup. Please try again.'));
     const scroll = root.scrollTop;
     const rows = [...root.querySelectorAll('.fx-an__chips, .fx-an__catscroll')].map((el) => el.scrollLeft);
     const keep = document.activeElement?.getAttribute?.('data-keep');
@@ -1196,17 +1208,20 @@
     render();
   };
 
-  const refresh = async (force) => {
+  const refresh = async (force, weekDate = state.weekDate) => {
     if (state.loading || (!force && state.data && Date.now() - state.at < TTL_MS)) return;
     state.loading = true;
     state.error = null;
     render();
     try {
-      state.raw = await load();
+      const raw = await load(weekDate);
+      const changedWeek = weekDate !== state.weekDate;
+      state.raw = raw;
       state.data = build(state.raw, null);
+      state.weekDate = weekDate;
       state.at = Date.now();
       const valid = state.data.days.filter((d) => d.kind !== 'past').map((d) => d.n);
-      state.sel = new Set([...state.sel].filter((n) => valid.includes(n)));
+      state.sel = new Set(changedWeek ? [] : [...state.sel].filter((n) => valid.includes(n)));
       if (!state.sel.size && valid.length) state.sel.add(valid[0]);
       if (!state.manual) state.targets = autoTargets();
       state.sim = null;
@@ -1216,7 +1231,8 @@
       fitMemo.clear();
       netMemo.clear();
       fetchSelected();
-    } catch {
+    } catch (err) {
+      console.error('Analyzer matchup load failed:', err);
       state.error = true;
     } finally {
       state.loading = false;

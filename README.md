@@ -2,6 +2,8 @@
 
 A cleaner mobile UI for [Fantrax](https://www.fantrax.com) (NBA), delivered as an Android app and as a userscript. Unofficial and not affiliated with Fantrax.
 
+The Analyzer can switch between the current and next matchup. Next-week projections assume both teams set their lineups to maximize games; current-week projections use the opponent's actual lineup. On the Matchups Summary tab, use the arrows beside the date to browse scoring periods.
+
 ## Install
 
 **Android app** (Android 8.0+)

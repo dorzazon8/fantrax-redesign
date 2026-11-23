@@ -15,12 +15,13 @@
   const DAY_MS = 86400000;
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  const cache = new Map(); // matchupId -> { at, games: { [teamId]: { played, left, leftEff } } }
+  const cache = new Map(); // `${matchupId}|${date}` -> { at, games: { [teamId]: { played, left, leftEff } } }
   const pending = new Set();
   let base = null; // UTC midnight of roster day 1
 
   const leagueId = () => location.pathname.match(/league\/(\w+)/)?.[1];
   const matchupId = () => new URLSearchParams(location.search).get('matchupId');
+  const dateParam = () => location.pathname.match(/;date=([\d-]+)/)?.[1] ?? '';
   const isoDay = (t) => new Date(t).toISOString().slice(0, 10);
 
   const call = async (msgs) => {
@@ -92,9 +93,9 @@
     ).length;
   };
 
-  const compute = async (id) => {
+  const compute = async (id, date) => {
     const teamIds = id.split('_');
-    const [period] = await call([stats(id, { sppId: '-1', viewType: '2' })]);
+    const [period] = await call([stats(id, { sppId: '-1', viewType: '2', ...(date && { date }) })]);
     const bounds = periodBounds(period?.displayPeriod);
     if (!bounds) return null;
     if (base == null) {
@@ -139,26 +140,31 @@
     return { at: Date.now(), games };
   };
 
-  const refresh = async (id) => {
-    const hit = cache.get(id);
-    if (pending.has(id) || (hit && Date.now() - hit.at < REFRESH_MS)) return;
-    pending.add(id);
+  const refresh = async (id, date) => {
+    const key = `${id}|${date}`;
+    const hit = cache.get(key);
+    if (pending.has(key) || (hit && Date.now() - hit.at < REFRESH_MS)) return;
+    pending.add(key);
     try {
-      const result = await compute(id);
-      cache.set(id, result ?? { at: Date.now(), games: hit?.games ?? {} });
+      const result = await compute(id, date);
+      cache.set(key, result ?? { at: Date.now(), games: hit?.games ?? {} });
     } catch {
-      cache.set(id, { at: Date.now(), games: hit?.games ?? {} });
+      cache.set(key, { at: Date.now(), games: hit?.games ?? {} });
     } finally {
-      pending.delete(id);
-      const entry = cache.get(id);
-      if (entry) window.__fxGames = { ...window.__fxGames, ...entry.games };
-      window.__fxEffSettled = id;
+      pending.delete(key);
+      tick();
     }
   };
 
   const tick = () => {
     const id = matchupId();
-    if (id && document.querySelector('app-league-livescoring') && !document.hidden) refresh(id);
+    if (!id || !document.querySelector('app-league-livescoring') || document.hidden) return;
+    const date = dateParam();
+    const key = `${id}|${date}`;
+    const entry = cache.get(key);
+    window.__fxGames = entry?.games ?? {};
+    window.__fxEffSettled = entry ? key : null;
+    refresh(id, date);
   };
   setInterval(tick, 2000);
   tick();

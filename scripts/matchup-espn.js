@@ -312,9 +312,11 @@
     }
     headers.forEach((header, i) => {
       const teamId = header.querySelector('a[href*="teamId="]')?.getAttribute('href').match(/teamId=(\w+)/)?.[1];
-      const info = window.__fxWeekGames?.[teamId];
-      const raw = window.__fxGames?.[teamId];
-      const settled = window.__fxEffSettled === lastMatchupId;
+      const date = location.pathname.match(/;date=([\d-]+)/)?.[1] ?? '';
+      const key = `${lastMatchupId}|${date}`;
+      const info = window.__fxWeekGamesKey === key ? window.__fxWeekGames?.[teamId] : null;
+      const settled = window.__fxEffSettled === key;
+      const raw = settled ? window.__fxGames?.[teamId] : null;
       const side = bar.children[i];
       const items = info && (raw || settled) ? [[info[0], raw?.played, 'played'], [raw?.leftEff ?? info[2], raw?.left, 'left']] : [];
       const text = items.map((item) => item.join('/')).join('|');
@@ -373,6 +375,8 @@
   };
 
   const syncDateLabel = () => {
+    const buttons = document.querySelectorAll(`${ROOT} .livescoring-mobile-filters .mat-mdc-form-field-icon-suffix > button`);
+    buttons.forEach((btn, i) => btn.setAttribute('aria-label', `${i === 0 ? 'Previous' : 'Next'} ${isSummary() ? 'week' : 'day'}`));
     for (const el of document.querySelectorAll('.livescoring-mobile-filters .mat-mdc-select-value')) {
       const text = el.querySelector('.mat-mdc-select-value-text')?.textContent.trim();
       if (text && el.dataset.fxLabel !== formatDate(text)) el.dataset.fxLabel = formatDate(text);

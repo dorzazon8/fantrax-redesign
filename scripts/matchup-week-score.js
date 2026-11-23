@@ -63,7 +63,6 @@
     try {
       const result = await fetchScores(id, date);
       cache.set(key, { at: Date.now(), ...result });
-      window.__fxWeekGames = { ...window.__fxWeekGames, ...result.games };
       schedule();
     } catch {
       cache.set(key, { at: Date.now(), scores: hit?.scores ?? {}, matchups: hit?.matchups ?? [] });
@@ -89,6 +88,8 @@
     const date = dateParam();
     refresh(id, date);
     const hit = cache.get(`${id}|${date}`);
+    window.__fxWeekGames = hit?.games ?? {};
+    window.__fxWeekGamesKey = `${id}|${date}`;
     if (!hit || !isDayView()) return;
 
     for (const header of document.querySelectorAll(HEADERS)) {
